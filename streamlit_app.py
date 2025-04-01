@@ -35,7 +35,6 @@ def parse_formula(formula_str: str) -> dict:
             parsed[element] = parsed.get(element, 0.0) + count
 
         # --- Validation Step (Basic) ---
-        # Reconstruct simple formula for basic check
         reconstructed_parts = []
         for element, count in sorted(parsed.items()):
             count_int = int(count)
@@ -45,9 +44,8 @@ def parse_formula(formula_str: str) -> dict:
                  reconstructed_parts.append(element)
         reconstructed = "".join(reconstructed_parts)
 
-        # Count parsed characters
         original_total_chars = 0
-        original_parsed_temp = {} # For comparing element sets/counts
+        original_parsed_temp = {}
         for match in re.finditer(r"([A-Z][a-z]?)(\d*)", formula_str):
              element = match.group(1)
              count_str = match.group(2)
@@ -55,32 +53,27 @@ def parse_formula(formula_str: str) -> dict:
              original_parsed_temp[element] = original_parsed_temp.get(element, 0) + count
              original_total_chars += len(match.group(0))
 
-        # Check if all characters were consumed by parsing
         if original_total_chars != len(formula_str.replace(" ", "")):
              st.error(f"Failed to parse the entire formula string '{formula_str}'. Check for invalid characters or format.")
              return {}
-
-        # Check if parsed elements match original elements (useful if regex was too simple)
         if set(parsed.keys()) != set(original_parsed_temp.keys()) or not parsed:
-             if parsed: # Only warn if something was parsed but it's inconsistent
+             if parsed:
                  st.warning(f"Parsing inconsistency detected for '{formula_str}'. Parsed elements: `{list(parsed.keys())}`. Original elements: `{list(original_parsed_temp.keys())}`. Proceeding with parsed data.")
-             else: # Complete failure to parse
+             else:
                  st.error(f"Failed to parse formula '{formula_str}'.")
                  return {}
-
         return parsed
     except Exception as e:
         st.error(f"Error parsing formula '{formula_str}': {e}")
         return {}
-    # --- End Placeholder ---
+# --- End Placeholder ---
 
 def generate_features(parsed_formula: dict) -> tuple[pd.DataFrame | None, list[int], list[float]]:
     """
     Generates features for the superconductor model based on the parsed formula.
     Placeholder implementation.
     """
-    if not parsed_formula:
-        return None, [], []
+    if not parsed_formula: return None, [], []
     try:
         elements = list(parsed_formula.keys())
         coefficients = list(parsed_formula.values())
@@ -92,20 +85,14 @@ def generate_features(parsed_formula: dict) -> tuple[pd.DataFrame | None, list[i
         unknown_elements = []
         for el in elements:
             num = atomic_numbers_map.get(el)
-            if num is None:
-                unknown_elements.append(el)
-                valid_elements = False
-            else:
-                atomic_numbers.append(num)
-
+            if num is None: unknown_elements.append(el); valid_elements = False
+            else: atomic_numbers.append(num)
         if not valid_elements:
             st.error(f"Unknown element(s) found: {', '.join(unknown_elements)}. Cannot generate features.")
             return None, [], []
         if not atomic_numbers or not coefficients or len(atomic_numbers) != len(coefficients):
              st.error("Mismatch between elements and coefficients after parsing. Cannot generate features.")
              return None, [], []
-
-        # Dummy feature vector
         num_features = 10
         feature_vector_data = np.random.rand(1, num_features)
         feature_vector_df = pd.DataFrame(feature_vector_data, columns=[f'feature_{i+1}' for i in range(num_features)])
@@ -113,20 +100,16 @@ def generate_features(parsed_formula: dict) -> tuple[pd.DataFrame | None, list[i
     except Exception as e:
         st.error(f"Error generating features: {e}")
         return None, [], []
-    # --- End Placeholder ---
+# --- End Placeholder ---
 
 def predict_critical_temperature(feature_vector: pd.DataFrame, atomic_numbers: list[int], coefficients: list[float]) -> float | None:
-    """
-    Predicts the critical temperature using a placeholder model.
-    """
+    """ Predicts the critical temperature using a placeholder model. """
     if feature_vector is None or not atomic_numbers or not coefficients: return None
     try:
         base_tc = 10.0
         sum_coeffs = sum(coefficients)
-        if abs(sum_coeffs) < 1e-9:
-             atomic_sum_effect = 0
-        else:
-             atomic_sum_effect = sum(an * c for an, c in zip(atomic_numbers, coefficients)) / sum_coeffs
+        if abs(sum_coeffs) < 1e-9: atomic_sum_effect = 0
+        else: atomic_sum_effect = sum(an * c for an, c in zip(atomic_numbers, coefficients)) / sum_coeffs
         random_factor = np.random.rand() * 20
         predicted_tc = base_tc + atomic_sum_effect * 0.5 + random_factor
         predicted_tc = max(0.0, min(predicted_tc, 200.0))
@@ -134,7 +117,7 @@ def predict_critical_temperature(feature_vector: pd.DataFrame, atomic_numbers: l
     except Exception as e:
         st.error(f"Error during prediction: {e}")
         return None
-    # --- End Placeholder ---
+# --- End Placeholder ---
 
 
 # --- Streamlit App Layout and Logic ---
@@ -147,16 +130,23 @@ RESULT_BOX_RADIUS = "8px"
 # --- Common CSS Rules (Applied in both themes) ---
 common_css = f"""
 <style>
-    /* --- TOGGLE WORKAROUND: Dark container for visibility --- */
-    div[data-testid="stToggle"] {{
+    /* --- TOGGLE WORKAROUND V2: Custom container class --- */
+    .dark-toggle-container {{
         background-color: #343A40 !important; /* Dark background always */
         padding: 10px 15px !important;       /* Padding around toggle */
         border-radius: {CONSISTENT_RADIUS} !important; /* Match other radii */
         margin-bottom: 1rem !important;       /* Add some space below */
         border: 1px solid #5A96B3 !important; /* Add a subtle border */
     }}
+    /* Style the toggle *inside* the custom container */
+    .dark-toggle-container div[data-testid="stToggle"] {{
+        margin-bottom: 0 !important; /* Remove default margin */
+        border: none !important; /* Remove default border */
+        padding: 0 !important; /* Remove default padding */
+        background-color: transparent !important; /* Make toggle bg transparent */
+    }}
     /* Ensure label inside dark toggle container is light */
-    div[data-testid="stToggle"] label {{
+    .dark-toggle-container div[data-testid="stToggle"] label {{
          color: #E0E0E0 !important; /* Light grey text always */
     }}
 
@@ -191,14 +181,14 @@ common_css = f"""
     /* Expander header container */
     div[data-testid="stExpander"] > div:first-child {{
          border: none !important;
-         background: none !important; /* Let header style handle background */
+         background: none !important;
     }}
      /* Expander header text/icon area */
-     div[data-testid="stExpander"] summary {{ /* Changed from header to summary for potentially better targeting */
+     div[data-testid="stExpander"] summary {{
         font-weight: bold !important;
         border-radius: 0 !important;
         padding: 0.5rem 1rem !important;
-        border-bottom: 1px solid; /* Separator line - color set in theme */
+        border-bottom: 1px solid; /* Color set in theme */
      }}
     /* Expander content area */
     div[data-testid="stExpander"] .streamlit-expanderContent div {{
@@ -275,7 +265,6 @@ dark_theme_css = f"""
 """
 
 # --- Apply Selected Theme ---
-# Inject common styles first, then theme-specific ones
 st.markdown(common_css, unsafe_allow_html=True)
 if st.session_state.theme == 'dark':
     st.markdown(dark_theme_css, unsafe_allow_html=True)
@@ -286,14 +275,20 @@ else:
 # --- App Title ---
 st.title("Superconductor Critical Temperature (Tc) Predictor")
 
-# --- Theme Toggle (now styled by common_css) ---
-st.toggle(
-    "Dark Mode",
-    key='theme_toggle',
-    value=(st.session_state.theme == 'dark'),
-    on_change=toggle_theme,
-    help="Switch between light and dark themes"
-)
+# --- Theme Toggle ---
+# Wrap toggle in a container and apply custom class via markdown
+# This container will be styled by `.dark-toggle-container` in common_css
+with st.container():
+    st.markdown('<div class="dark-toggle-container">', unsafe_allow_html=True)
+    st.toggle(
+        "Dark Mode",
+        key='theme_toggle',
+        value=(st.session_state.theme == 'dark'),
+        on_change=toggle_theme,
+        help="Switch between light and dark themes"
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
 
 st.markdown("---") # Divider
 
@@ -310,16 +305,14 @@ if formula_input:
     parsed = parse_formula(formula_input)
 
     if parsed:
-        # Displaying parsed formula immediately after successful parsing
         st.write(f"Parsed Formula: `{parsed}`")
-
         st.write("Generating features...")
         features, atom_nums, coeffs = generate_features(parsed)
 
         if isinstance(features, pd.DataFrame) and not features.empty:
             with st.expander("View Generated Features & Input Details"):
                 st.write("Input Elements:")
-                st.json(parsed) # Use st.json for better dict display
+                st.json(parsed)
                 st.write("Atomic Numbers Used:")
                 st.write(f"`{atom_nums}`")
                 st.write("Coefficients Used:")
@@ -344,12 +337,9 @@ if formula_input:
             else:
                 st.error("Prediction failed after feature generation.")
         elif features is None:
-             # Error message likely already shown in generate_features
              st.error("Feature generation failed. Cannot proceed.")
-        # This case implies generate_features returned an empty DataFrame/list, not None
         else:
              st.warning("Feature generation resulted in empty data. Cannot predict Tc.")
-    # else: # Parsing failed - error message likely already shown
 
 # --- Footer ---
 st.markdown("---")
