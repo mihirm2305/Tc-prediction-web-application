@@ -8,11 +8,14 @@ if 'theme' not in st.session_state:
 
 # --- Function to Toggle Theme ---
 def toggle_theme():
-    st.session_state.theme = 'dark' if st.session_state.theme == 'light' else 'light'
+    # Determine the new theme based on the toggle's current state *before* the change
+    # The toggle's value reflects its state *after* being clicked in the on_change callback
+    current_toggle_state_is_dark = st.session_state.theme_toggle
+    st.session_state.theme = 'dark' if current_toggle_state_is_dark else 'light'
+    # No need to rerun here, Streamlit handles rerun on widget interaction
 
 # --- Placeholder Functions ---
 # (parse_formula, generate_features, predict_critical_temperature remain the same as V3)
-# --- Placeholder Functions ---
 # These functions need to be implemented with your actual logic.
 
 def parse_formula(formula_str: str) -> dict:
@@ -45,18 +48,18 @@ def parse_formula(formula_str: str) -> dict:
         # Reconstruct original simplified by parsing again to handle order differences
         original_parsed_temp = {}
         for match in re.finditer(r"([A-Z][a-z]*)(\d*)", original_simplified):
-             element = match.group(1)
-             count_str = match.group(2)
-             count = int(count_str) if count_str else 1
-             original_parsed_temp[element] = original_parsed_temp.get(element, 0) + count
+            element = match.group(1)
+            count_str = match.group(2)
+            count = int(count_str) if count_str else 1
+            original_parsed_temp[element] = original_parsed_temp.get(element, 0) + count
         original_reconstructed_sorted = "".join(f"{e}{c if c != 1 else ''}" for e,c in sorted(original_parsed_temp.items()))
 
 
         if not parsed or reconstructed != original_reconstructed_sorted:
-             st.warning(f"Could not fully parse formula '{formula_str}'. Check format/elements.")
-             # Check if elements and total counts match loosely
-             if not parsed or sum(parsed.values()) != sum(original_parsed_temp.values()) or set(parsed.keys()) != set(original_parsed_temp.keys()):
-                  return {} # Return empty if elements or total counts differ significantly
+            st.warning(f"Could not fully parse formula '{formula_str}'. Check format/elements.")
+            # Check if elements and total counts match loosely
+            if not parsed or sum(parsed.values()) != sum(original_parsed_temp.values()) or set(parsed.keys()) != set(original_parsed_temp.keys()):
+                return {} # Return empty if elements or total counts differ significantly
         return parsed
     except Exception as e:
         st.error(f"Error parsing formula '{formula_str}': {e}")
@@ -232,12 +235,12 @@ light_theme_css = """
          color: #333333 !important;
     }
      code {
-        color: #0B3D91; background-color: #eef;
-        padding: 2px 5px; border-radius: 3px;
+         color: #0B3D91; background-color: #eef;
+         padding: 2px 5px; border-radius: 3px;
     }
-    /* Toggle button specific style if needed */
+    /* --- FIX: Added rule for toggle label in light mode --- */
     div[data-testid="stToggle"] label {
-        color: #333333 !important; /* Ensure toggle label is visible */
+        color: #333333 !important; /* Ensure toggle label is dark grey and visible */
     }
 </style>
 """
@@ -310,17 +313,18 @@ dark_theme_css = """
          color: #E0E0E0 !important;
     }
      code {
-        color: #A8D5EF; background-color: #343A40; /* Light blue text on dark grey */
-        padding: 2px 5px; border-radius: 3px;
+         color: #A8D5EF; background-color: #343A40; /* Light blue text on dark grey */
+         padding: 2px 5px; border-radius: 3px;
     }
      /* Toggle button specific style */
     div[data-testid="stToggle"] label {
-        color: #E0E0E0 !important; /* Ensure toggle label is visible */
+        color: #E0E0E0 !important; /* Ensure toggle label is light grey and visible */
     }
 </style>
 """
 
 # --- Apply Selected Theme ---
+# Apply CSS based on the current theme state
 if st.session_state.theme == 'dark':
     st.markdown(dark_theme_css, unsafe_allow_html=True)
 else:
@@ -332,13 +336,16 @@ st.title("Superconductor Critical Temperature (Tc) Predictor")
 
 # --- Theme Toggle ---
 # Place toggle below title, use callback to update state
+# The 'value' parameter sets the *initial* state of the toggle widget itself.
+# The 'on_change' callback updates the session state *after* the click.
 st.toggle(
     "Dark Mode",
     key='theme_toggle', # Assign key for potential direct access if needed
-    value=(st.session_state.theme == 'dark'), # Set initial value based on state
+    value=(st.session_state.theme == 'dark'), # Set initial visual state based on session state
     on_change=toggle_theme, # Call function when toggled
     help="Switch between light and dark themes"
 )
+
 
 st.markdown("---") # Divider
 
@@ -398,4 +405,3 @@ if formula_input:
 # Add a footer (optional)
 st.markdown("---")
 st.caption("Note: This app uses placeholder functions for parsing, feature generation, and prediction. Replace them with your actual implementation.")
-
