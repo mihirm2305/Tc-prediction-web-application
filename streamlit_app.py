@@ -130,14 +130,14 @@ RESULT_BOX_RADIUS = "8px"
 # --- Common CSS Rules (Applied in both themes) ---
 common_css = f"""
 <style>
-    /* --- TOGGLE WORKAROUND V3: Style stToggle container directly --- */
+    /* --- TOGGLE WORKAROUND V4: Style stToggle container directly, using 'background' --- */
     div[data-testid="stToggle"] {{
-        display: block !important; /* Ensure it behaves like a block for background */
-        background-color: #343A40 !important; /* Dark background always */
+        display: block !important;           /* Ensure it behaves like a block */
+        background: #343A40 !important;      /* Dark background always (using 'background') */
         padding: 10px 15px !important;       /* Padding around toggle */
         border-radius: {CONSISTENT_RADIUS} !important; /* Match other radii */
         margin-bottom: 1rem !important;       /* Add some space below */
-        border: 1px solid #5A96B3 !important; /* Add a subtle border */
+        /* border: 1px solid #5A96B3 !important; /* Temporarily removed border */
     }}
     /* Ensure label inside dark toggle container is light */
     div[data-testid="stToggle"] label {{
@@ -145,9 +145,6 @@ common_css = f"""
          display: flex !important; /* Improve label alignment */
          align-items: center !important;
     }}
-    /* Optional: Adjust spacing between toggle switch and label if needed */
-    /* div[data-testid="stToggle"] label span:last-child {{ margin-left: 8px; }} */
-
 
     /* --- INPUT OUTLINE FIX: Remove default browser outline on focus --- */
     div[data-testid="stTextInput"] input:focus {{
@@ -275,8 +272,7 @@ else:
 st.title("Superconductor Critical Temperature (Tc) Predictor")
 
 # --- Theme Toggle ---
-# Removed the container and markdown wrapper. Styles are now applied
-# directly to div[data-testid="stToggle"] via common_css.
+# Attempting to style the container directly again using common_css
 st.toggle(
     "Dark Mode",
     key='theme_toggle',
