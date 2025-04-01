@@ -29,16 +29,22 @@ def parse_formula(formula_str: str) -> dict:
             count_str = match.group(2)
             count = float(count_str) if count_str else 1.0
             parsed[element] = parsed.get(element, 0) + count
-        if not parsed or "".join(f"{e}{int(c) if c != 1.0 else ''}" for e, c in parsed.items()) != formula_str.replace("1.0","").replace(".0",""): # Basic validation
-             st.warning(f"Could not fully parse formula '{formula_str}'. Please check the format.")
-             return {}
+        # Basic validation check - ensure the reconstructed formula matches input (ignoring 1s)
+        reconstructed = "".join(f"{e}{int(c) if c != 1.0 else ''}" for e, c in parsed.items())
+        original_simplified = formula_str.replace("1.0", "").replace(".0", "") # Simplify original for comparison
+        # This validation is basic and might fail for complex formulas or different ordering
+        if not parsed or reconstructed != original_simplified:
+             st.warning(f"Could not fully parse formula '{formula_str}'. Please check the format or element order.")
+             # Attempt to reconstruct without order check for simple cases like H2O vs OH2
+             if not parsed or set(reconstructed) != set(original_simplified):
+                 return {} # Return empty if even the elements/counts don't match loosely
         return parsed
     except Exception as e:
         st.error(f"Error parsing formula '{formula_str}': {e}")
         return {}
     # --- End Placeholder ---
 
-def generate_features(parsed_formula: dict) -> tuple[pd.DataFrame, list[int], list[float]]:
+def generate_features(parsed_formula: dict) -> tuple[pd.DataFrame | None, list[int], list[float]]:
     """
     Generates features for the superconductor model based on the parsed formula.
 
@@ -61,9 +67,28 @@ def generate_features(parsed_formula: dict) -> tuple[pd.DataFrame, list[int], li
         # Example: Dummy features and data extraction
         elements = list(parsed_formula.keys())
         coefficients = list(parsed_formula.values())
-        # Replace with actual atomic number lookup
-        atomic_numbers_map = {'H': 1, 'S': 16, 'Mg': 12, 'B': 5, 'O': 8, 'Y': 39, 'Ba': 56, 'Cu': 29} # Example mapping
-        atomic_numbers = [atomic_numbers_map.get(el, 0) for el in elements] # Use 0 for unknown elements
+        # Replace with actual atomic number lookup (add more elements as needed)
+        atomic_numbers_map = {'H': 1, 'He': 2, 'Li': 3, 'Be': 4, 'B': 5, 'C': 6, 'N': 7, 'O': 8, 'F': 9, 'Ne': 10,
+                              'Na': 11, 'Mg': 12, 'Al': 13, 'Si': 14, 'P': 15, 'S': 16, 'Cl': 17, 'Ar': 18,
+                              'K': 19, 'Ca': 20, 'Sc': 21, 'Ti': 22, 'V': 23, 'Cr': 24, 'Mn': 25, 'Fe': 26, 'Co': 27, 'Ni': 28, 'Cu': 29, 'Zn': 30,
+                              'Ga': 31, 'Ge': 32, 'As': 33, 'Se': 34, 'Br': 35, 'Kr': 36,
+                              'Rb': 37, 'Sr': 38, 'Y': 39, 'Zr': 40, 'Nb': 41, 'Mo': 42, 'Tc': 43, 'Ru': 44, 'Rh': 45, 'Pd': 46, 'Ag': 47, 'Cd': 48,
+                              'In': 49, 'Sn': 50, 'Sb': 51, 'Te': 52, 'I': 53, 'Xe': 54,
+                              'Cs': 55, 'Ba': 56, 'La': 57, 'Ce': 58, 'Pr': 59, 'Nd': 60, 'Pm': 61, 'Sm': 62, 'Eu': 63, 'Gd': 64, 'Tb': 65, 'Dy': 66, 'Ho': 67, 'Er': 68, 'Tm': 69, 'Yb': 70, 'Lu': 71,
+                              'Hf': 72, 'Ta': 73, 'W': 74, 'Re': 75, 'Os': 76, 'Ir': 77, 'Pt': 78, 'Au': 79, 'Hg': 80,
+                              'Tl': 81, 'Pb': 82, 'Bi': 83, 'Po': 84, 'At': 85, 'Rn': 86} # Added more elements
+        atomic_numbers = []
+        valid_elements = True
+        for el in elements:
+            num = atomic_numbers_map.get(el)
+            if num is None:
+                st.error(f"Element '{el}' not found in atomic number map. Please update the map.")
+                valid_elements = False
+                break
+            atomic_numbers.append(num)
+
+        if not valid_elements:
+            return None, [], []
 
         # Dummy feature vector (e.g., 10 features)
         num_features = 10
@@ -121,7 +146,7 @@ st.set_page_config(
 
 # Apply Custom CSS for styling
 # Colors:
-# Blues: #C1E5F5 (light), #83CBEB (dark)
+# Blues: #C1E5F5 (light), #83CBEB (dark), #0B3D91 (darker)
 # Oranges: #FFDBBA (light), #FFAA5C (dark)
 st.markdown("""
 <style>
@@ -161,10 +186,10 @@ st.markdown("""
         transition: background-color 0.3s ease; /* Smooth hover effect */
     }
     .stButton button:hover {
-        background-color: #E59450; /* Slightly darker orange on hover */
+        background-color: #D98B4A; /* Slightly darker orange on hover (Improved Contrast) */
     }
     .stButton button:active {
-        background-color: #CC8448; /* Even darker orange when clicked */
+        background-color: #BF7A40; /* Even darker orange when clicked (Improved Contrast) */
     }
 
 
@@ -183,7 +208,7 @@ st.markdown("""
         font-size: 1.5em; /* Make prediction stand out */
     }
     .result-box span {
-         color: #333333; /* Dark grey for text */
+         color: #333333; /* Dark grey for text - good contrast on light blue */
          font-size: 1.1em;
     }
 
@@ -195,8 +220,13 @@ st.markdown("""
     }
     .stExpander header {
         font-weight: bold;
-        color: #A0522D; /* Sienna/Brownish-orange */
+        color: #0B3D91; /* Dark Blue for header text (Improved Contrast) */
     }
+    /* Ensure expander content text has good contrast too */
+    .stExpander .streamlit-expanderContent div {
+         color: #333333; /* Dark grey for content text */
+    }
+
 
 </style>
 """, unsafe_allow_html=True)
@@ -225,7 +255,8 @@ if formula_input:
         st.write("Generating features...")
         features, atom_nums, coeffs = generate_features(parsed)
 
-        if features is not None:
+        # Check if features is a DataFrame before proceeding
+        if isinstance(features, pd.DataFrame) and not features.empty:
             # Optionally display features in an expander
             with st.expander("View Generated Features (Example)"):
                 st.dataframe(features)
@@ -250,10 +281,14 @@ if formula_input:
                 )
             else:
                 st.error("Could not predict Tc. Check logs or input.")
-        else:
-            st.error("Feature generation failed. Cannot proceed with prediction.")
-    else:
-        st.warning("Formula parsing failed. Please enter a valid chemical formula.")
+        # Handle case where feature generation returns None or empty list/DataFrame explicitly
+        elif features is None:
+             st.error("Feature generation failed. Cannot proceed with prediction.")
+        else: # Handle cases where parsing might have worked but feature gen returned empty valid structures
+             st.warning("Feature generation resulted in empty data. Cannot predict Tc.")
+
+
+    # No 'else' needed here for parsed being empty, as parse_formula now handles warnings/errors internally
 
 # Add a footer (optional)
 st.markdown("---")
