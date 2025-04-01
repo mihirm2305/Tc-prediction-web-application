@@ -12,7 +12,6 @@ if 'theme_toggle' not in st.session_state: # Initialize toggle state if not pres
 # --- Function to Toggle Theme ---
 def toggle_theme():
     # The toggle's value in session_state ('theme_toggle') reflects its NEW state *after* the click
-    # So, if theme_toggle is True, it means the user just switched it ON (to Dark Mode)
     st.session_state.theme = 'dark' if st.session_state.theme_toggle else 'light'
     # Streamlit automatically reruns on widget interaction, applying the new CSS
 
@@ -21,43 +20,79 @@ def toggle_theme():
 def parse_formula(formula_str: str) -> dict:
     """
     Parses a chemical formula string into a dictionary of elements and their counts.
-
-    Args:
-        formula_str: The chemical formula (e.g., 'H2S', 'MgB2').
-
-    Returns:
-        A dictionary mapping element symbols to their counts (e.g., {'H': 2.0, 'S': 1.0}).
-        Returns an empty dictionary or raises an error if parsing fails.
+    Placeholder implementation.
     """
-    # --- Placeholder Implementation ---
     import re
     parsed = {}
+    if not isinstance(formula_str, str) or not formula_str.strip():
+        # Handle empty or non-string input gracefully
+        # st.info("Please enter a chemical formula.") # Optional feedback
+        return {}
     try:
-        for match in re.finditer(r"([A-Z][a-z]*)(\d*)", formula_str):
+        # Improved regex to handle elements like 'Cl' followed by numbers or other elements
+        # It looks for an uppercase letter, optionally followed by a lowercase letter,
+        # then optionally followed by digits.
+        for match in re.finditer(r"([A-Z][a-z]?)(\d*)", formula_str):
             element = match.group(1)
             count_str = match.group(2)
+            # Default count is 1.0 if no number follows the element
             count = float(count_str) if count_str else 1.0
-            parsed[element] = parsed.get(element, 0) + count
-        # Basic validation check
-        reconstructed = "".join(f"{e}{int(c) if c != 1.0 else ''}" for e, c in sorted(parsed.items()))
-        original_simplified = formula_str.replace("1.0", "").replace(".0", "")
+            # Add to existing count if element repeats (e.g., H2O + H = H3O)
+            parsed[element] = parsed.get(element, 0.0) + count
+
+        # --- Validation Step ---
+        # Reconstruct formula from parsed dict for validation
+        # Sort by element symbol for consistent comparison
+        reconstructed_parts = []
+        for element, count in sorted(parsed.items()):
+            count_int = int(count)
+            # Append count only if it's > 1; handle floating point comparison carefully
+            if count > 1.0001: # Use tolerance for float comparison
+                 reconstructed_parts.append(f"{element}{count_int}")
+            # Append element without count if count is 1
+            elif abs(count - 1.0) < 0.0001:
+                 reconstructed_parts.append(element)
+            # Handle fractional counts if necessary (though less common in basic formulas)
+            # else:
+            #    reconstructed_parts.append(f"{element}{count}") # Or decide how to handle fractions
+
+        reconstructed = "".join(reconstructed_parts)
+
+        # Also reconstruct the *original* formula in a sorted, simplified way
         original_parsed_temp = {}
-        for match in re.finditer(r"([A-Z][a-z]*)(\d*)", original_simplified):
+        original_total_chars = 0
+        for match in re.finditer(r"([A-Z][a-z]?)(\d*)", formula_str):
              element = match.group(1)
              count_str = match.group(2)
              count = int(count_str) if count_str else 1
              original_parsed_temp[element] = original_parsed_temp.get(element, 0) + count
-        original_reconstructed_sorted = "".join(f"{e}{c if c != 1 else ''}" for e,c in sorted(original_parsed_temp.items()))
+             original_total_chars += len(match.group(0)) # Count characters consumed by regex
 
+        # Check if all characters in the original string were parsed
+        if original_total_chars != len(formula_str.replace(" ", "")): # Ignore spaces
+             st.error(f"Failed to parse the entire formula string '{formula_str}'. Check for invalid characters or format.")
+             return {}
+
+        original_reconstructed_sorted_parts = []
+        for element, count in sorted(original_parsed_temp.items()):
+             if count > 1:
+                 original_reconstructed_sorted_parts.append(f"{element}{count}")
+             else:
+                 original_reconstructed_sorted_parts.append(element)
+        original_reconstructed_sorted = "".join(original_reconstructed_sorted_parts)
+
+
+        # Compare reconstructed versions
+        # This comparison is tricky due to potential order differences (e.g., H2O vs OH2)
+        # Comparing the sorted versions is more robust
         if not parsed or reconstructed != original_reconstructed_sorted:
-            # Only show warning if parsing actually extracted *something* but it didn't fully match
-            if parsed:
-                 st.warning(f"Could not fully parse formula '{formula_str}'. Check format/elements. Using parsed elements: {list(parsed.keys())}")
-            # Check if elements or total counts differ significantly even if parsing failed early
-            elif not parsed or sum(parsed.values()) != sum(original_parsed_temp.values()) or set(parsed.keys()) != set(original_parsed_temp.keys()):
-                 st.error(f"Failed to parse formula '{formula_str}'. Please check the input format.")
-                 return {} # Return empty only on significant failure
-        # Return parsed even if warning was shown, allowing feature gen attempt
+             # Only show warning if parsing actually extracted *something*
+             if parsed:
+                  st.warning(f"Parsing result may differ from input format or handle complex cases partially: '{formula_str}' -> `{parsed}`. Proceeding with parsed elements.")
+             else:
+                  st.error(f"Failed to parse formula '{formula_str}'. Please check the input format.")
+                  return {} # Return empty only on complete failure
+
         return parsed
     except Exception as e:
         st.error(f"Error parsing formula '{formula_str}': {e}")
@@ -67,18 +102,8 @@ def parse_formula(formula_str: str) -> dict:
 def generate_features(parsed_formula: dict) -> tuple[pd.DataFrame | None, list[int], list[float]]:
     """
     Generates features for the superconductor model based on the parsed formula.
-
-    Args:
-        parsed_formula: A dictionary from parse_formula (e.g., {'Mg': 1.0, 'B': 2.0}).
-
-    Returns:
-        A tuple containing:
-        - feature_vector: A pandas DataFrame or numpy array representing the input features for the model.
-        - atomic_numbers: A list of atomic numbers for the elements present.
-        - coefficients: A list of coefficients/counts corresponding to the atomic numbers.
-        Returns (None, [], []) if feature generation fails.
+    Placeholder implementation.
     """
-    # --- Placeholder Implementation ---
     if not parsed_formula:
         return None, [], []
 
@@ -107,17 +132,21 @@ def generate_features(parsed_formula: dict) -> tuple[pd.DataFrame | None, list[i
             if num is None:
                 unknown_elements.append(el)
                 valid_elements = False
-                # Don't break, collect all unknown elements
             else:
+                # Ensure atomic numbers correspond to the order of coefficients
                 atomic_numbers.append(num)
 
         if not valid_elements:
             st.error(f"Unknown element(s) found: {', '.join(unknown_elements)}. Cannot generate features.")
             return None, [], []
 
-        # Dummy feature vector (e.g., 10 features)
+        # Ensure lists are not empty before proceeding
+        if not atomic_numbers or not coefficients or len(atomic_numbers) != len(coefficients):
+             st.error("Mismatch between elements and coefficients after parsing. Cannot generate features.")
+             return None, [], []
+
+        # Dummy feature vector
         num_features = 10
-        # Seed for reproducibility if needed: np.random.seed(42)
         feature_vector_data = np.random.rand(1, num_features)
         feature_vector_df = pd.DataFrame(feature_vector_data, columns=[f'feature_{i+1}' for i in range(num_features)])
 
@@ -129,29 +158,26 @@ def generate_features(parsed_formula: dict) -> tuple[pd.DataFrame | None, list[i
 
 def predict_critical_temperature(feature_vector: pd.DataFrame, atomic_numbers: list[int], coefficients: list[float]) -> float | None:
     """
-    Predicts the critical temperature using the PyTorch model.
-
-    Args:
-        feature_vector: The feature vector from generate_features.
-        atomic_numbers: List of atomic numbers.
-        coefficients: List of coefficients.
-
-    Returns:
-        The predicted critical temperature (Tc) in Kelvin, or None if prediction fails.
+    Predicts the critical temperature using a placeholder model.
     """
-    # --- Placeholder Implementation ---
     if feature_vector is None or not atomic_numbers or not coefficients:
         return None
 
     try:
-        # Dummy prediction: Simulate some dependency on input
-        # Example: base_tc + sum_of_atomic_numbers_weighted
+        # Dummy prediction
         base_tc = 10.0
-        atomic_sum_effect = sum(an * c for an, c in zip(atomic_numbers, coefficients)) / (sum(coefficients) + 1e-6) # Weighted average effect
-        random_factor = np.random.rand() * 20 # Add some noise
+        # Ensure coefficients sum is not zero to avoid division by zero
+        sum_coeffs = sum(coefficients)
+        if abs(sum_coeffs) < 1e-9:
+             # Handle case with zero coefficients if necessary, maybe return base_tc or error
+             st.warning("Sum of coefficients is zero, prediction might be trivial.")
+             atomic_sum_effect = 0
+        else:
+             atomic_sum_effect = sum(an * c for an, c in zip(atomic_numbers, coefficients)) / sum_coeffs
+
+        random_factor = np.random.rand() * 20
         predicted_tc = base_tc + atomic_sum_effect * 0.5 + random_factor
-        # Ensure prediction is within a reasonable range (e.g., 0K to 200K)
-        predicted_tc = max(0.0, min(predicted_tc, 200.0))
+        predicted_tc = max(0.0, min(predicted_tc, 200.0)) # Clamp prediction
         return predicted_tc
     except Exception as e:
         st.error(f"Error during prediction: {e}")
@@ -161,7 +187,6 @@ def predict_critical_temperature(feature_vector: pd.DataFrame, atomic_numbers: l
 
 # --- Streamlit App Layout and Logic ---
 
-# Page configuration (must be the first Streamlit command)
 st.set_page_config(
     page_title="Superconductor Tc Predictor",
     page_icon="🧊",
@@ -169,197 +194,179 @@ st.set_page_config(
 )
 
 # --- Define CSS for Light and Dark Themes ---
-
-# Consistent radius value
 CONSISTENT_RADIUS = "6px"
-RESULT_BOX_RADIUS = "8px" # Slightly larger for emphasis
+RESULT_BOX_RADIUS = "8px"
 
 light_theme_css = f"""
 <style>
-    /* Main background and default text color */
+    /* Base styles */
     body, .stApp {{
-        background-color: #FFFFFF !important; /* White background */
-        color: #333333 !important; /* Default dark grey text color */
+        background-color: #FFFFFF !important;
+        color: #333333 !important;
     }}
+    h1 {{ color: #0B3D91; text-align: center; }}
 
-    /* Title style */
-    h1 {{
-        color: #0B3D91;
-        text-align: center;
+    /* Input field */
+    .stTextInput label {{ color: #0B3D91; font-weight: bold; }}
+    /* --- BORDER FIX V2: Target input with higher specificity --- */
+    div[data-testid="stTextInput"] input {{
+        border: 1px solid #83CBEB !important; /* Apply desired border */
+        border-radius: {CONSISTENT_RADIUS} !important;
+        background-color: #F0F8FF !important;
+        color: #333333 !important;
+        padding: 10px !important; /* Ensure padding is consistent */
     }}
-
-    /* Input label */
-    .stTextInput label {{
-        color: #0B3D91;
-        font-weight: bold;
-    }}
-
-     /* Input box styling */
-    .stTextInput input {{
-        border: 1px solid #83CBEB;
-        border-radius: {CONSISTENT_RADIUS}; /* Consistent radius */
-        padding: 10px;
-        background-color: #F0F8FF;
-        color: #333333;
-    }}
-
-    /* Style the placeholder text in the input box */
     .stTextInput input::placeholder {{ color: #777777 !important; opacity: 1; }}
-    .stTextInput input::-webkit-input-placeholder {{ color: #777777 !important; opacity: 1; }}
-    .stTextInput input::-moz-placeholder {{ color: #777777 !important; opacity: 1; }}
-    .stTextInput input:-ms-input-placeholder {{ color: #777777 !important; opacity: 1; }}
-    .stTextInput input::-ms-input-placeholder {{ color: #777777 !important; opacity: 1; }}
+    /* ... other placeholder styles ... */
 
-    /* Button styling */
+    /* Button */
     .stButton button {{
-        background-color: #FFAA5C; color: white; border: none;
-        padding: 10px 20px;
-        border-radius: {CONSISTENT_RADIUS}; /* Consistent radius */
-        font-weight: bold;
-        transition: background-color 0.3s ease;
+        background-color: #FFAA5C !important; color: white !important; border: none !important;
+        padding: 10px 20px !important;
+        border-radius: {CONSISTENT_RADIUS} !important;
+        font-weight: bold !important;
+        transition: background-color 0.3s ease !important;
     }}
-    .stButton button:hover {{ background-color: #D98B4A; }}
-    .stButton button:active {{ background-color: #BF7A40; }}
+    .stButton button:hover {{ background-color: #D98B4A !important; }}
+    .stButton button:active {{ background-color: #BF7A40 !important; }}
 
-    /* Result display area */
+    /* Result box (custom class, less likely to conflict) */
     .result-box {{
         background-color: #C1E5F5; border: 2px solid #83CBEB;
-        border-radius: {RESULT_BOX_RADIUS}; /* Slightly larger radius */
-        padding: 20px; margin-top: 20px;
+        border-radius: {RESULT_BOX_RADIUS}; padding: 20px; margin-top: 20px;
         text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }}
     .result-box strong {{ color: #0B3D91; font-size: 1.5em; }}
     .result-box span {{ color: #333333; font-size: 1.1em; }}
 
-    /* Styling for expander */
-    .stExpander {{
-        border: 1px solid #FFDBBA;
-        border-radius: {CONSISTENT_RADIUS}; /* Consistent radius */
-        background-color: #FFF9F3;
-        overflow: hidden; /* Ensures content respects border radius */
+    /* Expander */
+    /* --- BORDER FIX V2: Target expander container with higher specificity --- */
+    div[data-testid="stExpander"] {{
+        border: 1px solid #FFDBBA !important; /* Apply desired border */
+        border-radius: {CONSISTENT_RADIUS} !important;
+        background-color: #FFF9F3 !important;
+        overflow: hidden !important;
     }}
-     .stExpander header {{
-        font-weight: bold; color: #0B3D91;
-        border-top-left-radius: {CONSISTENT_RADIUS}; /* Match container radius */
-        border-top-right-radius: {CONSISTENT_RADIUS}; /* Match container radius */
+    /* Target header within the specific expander container */
+    div[data-testid="stExpander"] > div:first-child {{ /* Usually the header container */
+         /* Reset potential default border/background on header parts */
+         border: none !important;
+         border-bottom: 1px solid #FFDBBA !important; /* Optional: separator line */
+         background-color: #FFF9F3 !important; /* Match container background */
+    }}
+     div[data-testid="stExpander"] header {{ /* Target the <summary> or similar element */
+        font-weight: bold !important; color: #0B3D91 !important;
+        border-radius: 0 !important; /* Remove radius from header itself */
+        padding: 0.5rem 1rem !important; /* Adjust padding as needed */
      }}
-    .stExpander .streamlit-expanderContent div {{ color: #333333; }}
+    /* Target content area text color */
+    div[data-testid="stExpander"] .streamlit-expanderContent div {{
+        color: #333333 !important;
+        padding: 1rem !important; /* Add padding to content */
+    }}
 
-
-    /* Ensure text written via st.write has good contrast */
+    /* General text elements */
     .stMarkdown, .stWrite, div[data-testid="stText"], div[data-testid="stForm"] {{
          color: #333333 !important;
     }}
      code {{
-         color: #0B3D91; background-color: #eef;
-         padding: 2px 5px;
-         border-radius: {CONSISTENT_RADIUS}; /* Consistent radius */
+         color: #0B3D91 !important; background-color: #eef !important;
+         padding: 2px 5px !important;
+         border-radius: {CONSISTENT_RADIUS} !important;
     }}
-    /* --- FIX V3: Targeting toggle container for light mode --- */
-    div[data-testid="stToggle"] {{
-        color: #333333 !important; /* Ensure text within toggle container is dark grey */
-    }}
-    /* Explicitly target label again just in case container doesn't cascade */
-    div[data-testid="stToggle"] label {{
-         color: #333333 !important;
+
+    /* --- TOGGLE FIX V4: Target label with higher specificity --- */
+    div[data-testid="stApp"] div[data-testid="stToggle"] label {{
+        color: #333333 !important; /* Dark grey for light mode */
     }}
 </style>
 """
 
 dark_theme_css = f"""
 <style>
-    /* Main background and default text color */
+    /* Base styles */
     body, .stApp {{
-        background-color: #212529 !important; /* Dark background */
-        color: #E0E0E0 !important; /* Default light grey text color */
+        background-color: #212529 !important;
+        color: #E0E0E0 !important;
     }}
+    h1 {{ color: #A8D5EF; text-align: center; }}
 
-    /* Title style */
-    h1 {{
-        color: #A8D5EF; /* Lighter blue for title */
-        text-align: center;
+    /* Input field */
+    .stTextInput label {{ color: #A8D5EF; font-weight: bold; }}
+    /* --- BORDER FIX V2: Target input with higher specificity --- */
+    div[data-testid="stTextInput"] input {{
+        border: 1px solid #5A96B3 !important; /* Apply desired border */
+        border-radius: {CONSISTENT_RADIUS} !important;
+        background-color: #343A40 !important;
+        color: #E0E0E0 !important;
+        padding: 10px !important;
     }}
-
-    /* Input label */
-    .stTextInput label {{
-        color: #A8D5EF; /* Lighter blue */
-        font-weight: bold;
-    }}
-
-     /* Input box styling */
-    .stTextInput input {{
-        border: 1px solid #5A96B3; /* Desaturated dark blue border */
-        border-radius: {CONSISTENT_RADIUS}; /* Consistent radius */
-        padding: 10px;
-        background-color: #343A40; /* Darker grey background */
-        color: #E0E0E0; /* Light text */
-    }}
-
-    /* Style the placeholder text in the input box */
     .stTextInput input::placeholder {{ color: #6C757D !important; opacity: 1; }}
-    .stTextInput input::-webkit-input-placeholder {{ color: #6C757D !important; opacity: 1; }}
-    .stTextInput input::-moz-placeholder {{ color: #6C757D !important; opacity: 1; }}
-    .stTextInput input:-ms-input-placeholder {{ color: #6C757D !important; opacity: 1; }}
-    .stTextInput input::-ms-input-placeholder {{ color: #6C757D !important; opacity: 1; }}
+    /* ... other placeholder styles ... */
 
-
-    /* Button styling */
+    /* Button */
     .stButton button {{
-        background-color: #FFAA5C; color: white; border: none; /* Keep orange */
-        padding: 10px 20px;
-        border-radius: {CONSISTENT_RADIUS}; /* Consistent radius */
-        font-weight: bold;
-        transition: background-color 0.3s ease;
+        background-color: #FFAA5C !important; color: white !important; border: none !important;
+        padding: 10px 20px !important;
+        border-radius: {CONSISTENT_RADIUS} !important;
+        font-weight: bold !important;
+        transition: background-color 0.3s ease !important;
     }}
-    .stButton button:hover {{ background-color: #D98B4A; }}
-    .stButton button:active {{ background-color: #BF7A40; }}
+    .stButton button:hover {{ background-color: #D98B4A !important; }}
+    .stButton button:active {{ background-color: #BF7A40 !important; }}
 
-    /* Result display area */
+    /* Result box */
     .result-box {{
-        background-color: #0B3D91; border: 2px solid #83CBEB; /* Dark blue bg, light blue border */
-        border-radius: {RESULT_BOX_RADIUS}; /* Slightly larger radius */
-        padding: 20px; margin-top: 20px;
-        text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.4); /* Darker shadow */
+        background-color: #0B3D91; border: 2px solid #83CBEB;
+        border-radius: {RESULT_BOX_RADIUS}; padding: 20px; margin-top: 20px;
+        text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.4);
     }}
-    .result-box strong {{ color: #C1E5F5; font-size: 1.5em; }} /* Light blue text */
-    .result-box span {{ color: #E0E0E0; font-size: 1.1em; }} /* Light grey text */
+    .result-box strong {{ color: #C1E5F5; font-size: 1.5em; }}
+    .result-box span {{ color: #E0E0E0; font-size: 1.1em; }}
 
-    /* Styling for expander */
-    .stExpander {{
-        border: 1px solid #A0522D; /* Darker orange border */
-        border-radius: {CONSISTENT_RADIUS}; /* Consistent radius */
-        background-color: #343A40; /* Darker grey background */
-        overflow: hidden; /* Ensures content respects border radius */
+    /* Expander */
+    /* --- BORDER FIX V2: Target expander container with higher specificity --- */
+    div[data-testid="stExpander"] {{
+        border: 1px solid #A0522D !important; /* Apply desired border */
+        border-radius: {CONSISTENT_RADIUS} !important;
+        background-color: #343A40 !important;
+        overflow: hidden !important;
     }}
-    .stExpander header {{
-        font-weight: bold; color: #A8D5EF; /* Lighter blue header */
-        border-top-left-radius: {CONSISTENT_RADIUS}; /* Match container radius */
-        border-top-right-radius: {CONSISTENT_RADIUS}; /* Match container radius */
+     /* Target header within the specific expander container */
+    div[data-testid="stExpander"] > div:first-child {{
+         border: none !important;
+         border-bottom: 1px solid #A0522D !important; /* Optional: separator line */
+         background-color: #343A40 !important; /* Match container background */
     }}
-    .stExpander .streamlit-expanderContent div {{ color: #E0E0E0; }} /* Light grey content */
+     div[data-testid="stExpander"] header {{
+        font-weight: bold !important; color: #A8D5EF !important;
+        border-radius: 0 !important;
+        padding: 0.5rem 1rem !important;
+     }}
+    /* Target content area text color */
+    div[data-testid="stExpander"] .streamlit-expanderContent div {{
+        color: #E0E0E0 !important;
+        padding: 1rem !important;
+    }}
 
-    /* Ensure text written via st.write has good contrast */
+    /* General text elements */
     .stMarkdown, .stWrite, div[data-testid="stText"], div[data-testid="stForm"] {{
          color: #E0E0E0 !important;
     }}
      code {{
-         color: #A8D5EF; background-color: #343A40; /* Light blue text on dark grey */
-         padding: 2px 5px;
-         border-radius: {CONSISTENT_RADIUS}; /* Consistent radius */
+         color: #A8D5EF !important; background-color: #343A40 !important;
+         padding: 2px 5px !important;
+         border-radius: {CONSISTENT_RADIUS} !important;
     }}
-     /* --- FIX V3: Targeting toggle container for dark mode --- */
-    div[data-testid="stToggle"] {{
-        color: #E0E0E0 !important; /* Ensure text within toggle container is light grey */
-    }}
-     /* Explicitly target label again just in case container doesn't cascade */
-    div[data-testid="stToggle"] label {{
-         color: #E0E0E0 !important;
+
+    /* --- TOGGLE FIX V4: Target label with higher specificity --- */
+    div[data-testid="stApp"] div[data-testid="stToggle"] label {{
+        color: #E0E0E0 !important; /* Light grey for dark mode */
     }}
 </style>
 """
 
 # --- Apply Selected Theme ---
-# Apply CSS based on the current theme state
 if st.session_state.theme == 'dark':
     st.markdown(dark_theme_css, unsafe_allow_html=True)
 else:
@@ -370,12 +377,11 @@ else:
 st.title("Superconductor Critical Temperature (Tc) Predictor")
 
 # --- Theme Toggle ---
-# Place toggle below title, use callback to update state
 st.toggle(
     "Dark Mode",
-    key='theme_toggle', # Assign key to access state in callback
-    value=(st.session_state.theme == 'dark'), # Set initial visual state based on session state
-    on_change=toggle_theme, # Call function when toggled
+    key='theme_toggle',
+    value=(st.session_state.theme == 'dark'),
+    on_change=toggle_theme,
     help="Switch between light and dark themes"
 )
 
@@ -391,23 +397,19 @@ formula_input = st.text_input(
 
 # --- Processing and Output ---
 if formula_input:
-    # 1. Parse the formula
     st.write("Parsing formula...")
     parsed = parse_formula(formula_input)
 
-    if parsed: # Proceed only if parsing didn't return an empty dict
-        st.write(f"Parsed Formula: `{parsed}`") # Show parsed dict even if warning was issued
+    if parsed:
+        st.write(f"Parsed Formula: `{parsed}`") # Show parsed dict
 
-        # 2. Generate features
         st.write("Generating features...")
         features, atom_nums, coeffs = generate_features(parsed)
 
-        # Check if features is a DataFrame before proceeding
         if isinstance(features, pd.DataFrame) and not features.empty:
-            # Optionally display features in an expander
             with st.expander("View Generated Features & Input Details"):
                 st.write("Input Elements:")
-                st.json(parsed) # Display parsed elements/counts nicely
+                st.json(parsed)
                 st.write("Atomic Numbers Used:")
                 st.write(f"`{atom_nums}`")
                 st.write("Coefficients Used:")
@@ -415,14 +417,11 @@ if formula_input:
                 st.write("Example Feature Vector (Dummy Data):")
                 st.dataframe(features)
 
-            # 3. Predict Tc
             st.write("Predicting critical temperature...")
             predicted_tc = predict_critical_temperature(features, atom_nums, coeffs)
 
-            # 4. Display Result
-            st.markdown("---") # Divider
+            st.markdown("---")
             if predicted_tc is not None:
-                # Use markdown with the custom class for styling
                 st.markdown(
                     f"""
                     <div class="result-box">
@@ -433,19 +432,15 @@ if formula_input:
                     unsafe_allow_html=True
                 )
             else:
-                # Error during prediction step
                 st.error("Prediction failed after feature generation.")
-        # Handle case where feature generation returns None or empty list/DataFrame explicitly
         elif features is None:
-             # Error message already shown in generate_features
-             st.error("Feature generation failed. Cannot proceed with prediction.")
-        # This case should be less likely now if generate_features handles errors
+             # Error message likely already shown in generate_features
+             st.error("Feature generation failed. Cannot proceed.")
         else:
              st.warning("Feature generation resulted in empty data. Cannot predict Tc.")
-    # else: # Parsing failed and returned {} - error message already shown in parse_formula
-        # st.info("Enter a valid chemical formula to proceed.")
+    # else: # Parsing failed - error message likely already shown
 
-
-# Add a footer (optional)
+# --- Footer ---
 st.markdown("---")
-st.caption("Note: This app uses placeholder functions for parsing, feature generation, and prediction. Replace them with your actual implementation.")
+st.caption("Note: This app uses placeholder functions. Replace them with your actual implementation.")
+
