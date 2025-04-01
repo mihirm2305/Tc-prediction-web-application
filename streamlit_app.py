@@ -4,7 +4,6 @@ import numpy as np # Used for dummy data generation
 
 # --- Placeholder Functions ---
 # (parse_formula, generate_features, predict_critical_temperature remain the same)
-# Note: Added minor improvements to parsing feedback.
 def parse_formula(formula_str: str) -> dict:
     """
     Parses a chemical formula string into a dictionary of elements and their counts.
@@ -181,12 +180,6 @@ app_css = f"""
         background-color: {ACCENT_COLOR_ACTIVE} !important;
         transform: translateY(0px); /* Back to normal on click */
     }}
-    /* Center the button if needed (depends on Streamlit version) */
-    /* div[data-testid="stVerticalBlock"] div[data-testid="stButton"] {{
-        display: flex;
-        justify-content: center;
-    }} */
-
 
     /* --- Result Box --- */
     .result-box {{
@@ -281,9 +274,18 @@ app_css = f"""
         text-decoration: underline !important; /* Add underline on hover */
     }}
 
-    /* --- Remove Toggle Styling (No longer needed) --- */
+    /* --- Force Hide Toggle (Just in Case) --- */
     div[data-testid="stToggle"] {{
-        display: none !important; /* Hide the toggle completely */
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        width: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        position: absolute !important; /* Take out of layout flow */
+        left: -9999px; /* Move off-screen */
     }}
 
 </style>
@@ -295,7 +297,7 @@ st.markdown(app_css, unsafe_allow_html=True)
 
 # --- App Title ---
 st.title("Superconductor Tc Predictor")
-# Removed the toggle widget
+# The st.toggle call has been removed from the code below
 
 st.markdown("---") # Divider
 
