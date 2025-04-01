@@ -30,14 +30,23 @@ def parse_formula(formula_str: str) -> dict:
             count = float(count_str) if count_str else 1.0
             parsed[element] = parsed.get(element, 0) + count
         # Basic validation check - ensure the reconstructed formula matches input (ignoring 1s)
-        reconstructed = "".join(f"{e}{int(c) if c != 1.0 else ''}" for e, c in parsed.items())
+        reconstructed = "".join(f"{e}{int(c) if c != 1.0 else ''}" for e, c in sorted(parsed.items())) # Sort for consistent comparison
         original_simplified = formula_str.replace("1.0", "").replace(".0", "") # Simplify original for comparison
-        # This validation is basic and might fail for complex formulas or different ordering
-        if not parsed or reconstructed != original_simplified:
-             st.warning(f"Could not fully parse formula '{formula_str}'. Please check the format or element order.")
-             # Attempt to reconstruct without order check for simple cases like H2O vs OH2
-             if not parsed or set(reconstructed) != set(original_simplified):
-                 return {} # Return empty if even the elements/counts don't match loosely
+        # Reconstruct original simplified by parsing again to handle order differences
+        original_parsed_temp = {}
+        for match in re.finditer(r"([A-Z][a-z]*)(\d*)", original_simplified):
+             element = match.group(1)
+             count_str = match.group(2)
+             count = int(count_str) if count_str else 1
+             original_parsed_temp[element] = original_parsed_temp.get(element, 0) + count
+        original_reconstructed_sorted = "".join(f"{e}{c if c != 1 else ''}" for e,c in sorted(original_parsed_temp.items()))
+
+
+        if not parsed or reconstructed != original_reconstructed_sorted:
+             st.warning(f"Could not fully parse formula '{formula_str}'. Check format/elements.")
+             # Check if elements and total counts match loosely
+             if not parsed or sum(parsed.values()) != sum(original_parsed_temp.values()) or set(parsed.keys()) != set(original_parsed_temp.keys()):
+                  return {} # Return empty if elements or total counts differ significantly
         return parsed
     except Exception as e:
         st.error(f"Error parsing formula '{formula_str}': {e}")
@@ -148,11 +157,13 @@ st.set_page_config(
 # Colors:
 # Blues: #C1E5F5 (light), #83CBEB (dark), #0B3D91 (darker)
 # Oranges: #FFDBBA (light), #FFAA5C (dark)
+# Greys: #333333 (dark for text)
 st.markdown("""
 <style>
-    /* Main background */
+    /* Main background and default text color */
     .stApp {
         background-color: #FFFFFF; /* White background */
+        color: #333333; /* Default dark grey text color for visibility */
     }
 
     /* Title style */
@@ -173,12 +184,13 @@ st.markdown("""
         border-radius: 5px;
         padding: 10px;
         background-color: #F0F8FF; /* Very light blue background */
+        color: #333333; /* Ensure input text is also dark */
     }
 
     /* Button styling */
     .stButton button {
         background-color: #FFAA5C; /* Dark Orange */
-        color: white;
+        color: white; /* White text still okay on this orange */
         border: none;
         padding: 10px 20px;
         border-radius: 5px;
@@ -186,10 +198,10 @@ st.markdown("""
         transition: background-color 0.3s ease; /* Smooth hover effect */
     }
     .stButton button:hover {
-        background-color: #D98B4A; /* Slightly darker orange on hover (Improved Contrast) */
+        background-color: #D98B4A; /* Slightly darker orange on hover */
     }
     .stButton button:active {
-        background-color: #BF7A40; /* Even darker orange when clicked (Improved Contrast) */
+        background-color: #BF7A40; /* Even darker orange when clicked */
     }
 
 
@@ -227,6 +239,19 @@ st.markdown("""
          color: #333333; /* Dark grey for content text */
     }
 
+    /* Ensure text written via st.write has good contrast */
+    /* This might be covered by .stApp rule, but adding specific rule for safety */
+    .stMarkdown, .stWrite, div[data-testid="stText"] {
+         color: #333333 !important; /* Use !important cautiously if needed */
+    }
+    /* Style the code block specifically if needed */
+     code {
+        color: #0B3D91; /* Dark blue for code text */
+        background-color: #eef; /* Light background for code */
+        padding: 2px 5px;
+        border-radius: 3px;
+    }
+
 
 </style>
 """, unsafe_allow_html=True)
@@ -245,26 +270,26 @@ formula_input = st.text_input(
 # --- Processing and Output ---
 if formula_input:
     # 1. Parse the formula
-    st.write("Parsing formula...")
+    st.write("Parsing formula...") # This text should now be visible
     parsed = parse_formula(formula_input)
 
     if parsed:
-        st.write(f"Parsed Formula: `{parsed}`")
+        st.write(f"Parsed Formula: `{parsed}`") # This text should now be visible
 
         # 2. Generate features
-        st.write("Generating features...")
+        st.write("Generating features...") # This text should now be visible
         features, atom_nums, coeffs = generate_features(parsed)
 
         # Check if features is a DataFrame before proceeding
         if isinstance(features, pd.DataFrame) and not features.empty:
             # Optionally display features in an expander
             with st.expander("View Generated Features (Example)"):
-                st.dataframe(features)
-                st.write(f"Atomic Numbers: `{atom_nums}`")
-                st.write(f"Coefficients: `{coeffs}`")
+                st.dataframe(features) # Dataframe styling is handled by streamlit
+                st.write(f"Atomic Numbers: `{atom_nums}`") # This text should now be visible
+                st.write(f"Coefficients: `{coeffs}`") # This text should now be visible
 
             # 3. Predict Tc
-            st.write("Predicting critical temperature...")
+            st.write("Predicting critical temperature...") # This text should now be visible
             predicted_tc = predict_critical_temperature(features, atom_nums, coeffs)
 
             # 4. Display Result
