@@ -2,21 +2,9 @@ import streamlit as st
 import pandas as pd # Used for feature vector display example
 import numpy as np # Used for dummy data generation
 
-# --- Initialize Session State ---
-if 'theme' not in st.session_state:
-    st.session_state.theme = 'light' # Default to light mode
-if 'theme_toggle' not in st.session_state: # Initialize toggle state if not present
-    st.session_state.theme_toggle = (st.session_state.theme == 'dark')
-
-
-# --- Function to Toggle Theme ---
-def toggle_theme():
-    # The toggle's value in session_state ('theme_toggle') reflects its NEW state *after* the click
-    st.session_state.theme = 'dark' if st.session_state.theme_toggle else 'light'
-    # Streamlit automatically reruns on widget interaction, applying the new CSS
-
 # --- Placeholder Functions ---
 # (parse_formula, generate_features, predict_critical_temperature remain the same)
+# Note: Added minor improvements to parsing feedback.
 def parse_formula(formula_str: str) -> dict:
     """
     Parses a chemical formula string into a dictionary of elements and their counts.
@@ -25,46 +13,45 @@ def parse_formula(formula_str: str) -> dict:
     import re
     parsed = {}
     if not isinstance(formula_str, str) or not formula_str.strip():
+        # st.info("Please enter a chemical formula.") # Optional feedback
         return {}
     try:
         # Regex: Uppercase letter, optional lowercase, optional digits
-        for match in re.finditer(r"([A-Z][a-z]?)(\d*)", formula_str):
+        parsing_log = [] # Track parsed parts
+        last_index = 0
+        formula_cleaned = formula_str.replace(" ", "") # Remove spaces for index tracking
+
+        for match in re.finditer(r"([A-Z][a-z]?)(\d*)", formula_cleaned):
+            if match.start() != last_index:
+                 # Gap detected, indicates unparsed characters
+                 unparsed_segment = formula_cleaned[last_index:match.start()]
+                 st.error(f"Invalid characters or format detected near: '{unparsed_segment}' in '{formula_str}'")
+                 return {}
+
             element = match.group(1)
             count_str = match.group(2)
             count = float(count_str) if count_str else 1.0
             parsed[element] = parsed.get(element, 0.0) + count
+            parsing_log.append(match.group(0))
+            last_index = match.end()
 
-        # --- Validation Step (Basic) ---
-        reconstructed_parts = []
-        for element, count in sorted(parsed.items()):
-            count_int = int(count)
-            if count > 1.0001:
-                 reconstructed_parts.append(f"{element}{count_int}")
-            elif abs(count - 1.0) < 0.0001:
-                 reconstructed_parts.append(element)
-        reconstructed = "".join(reconstructed_parts)
-
-        original_total_chars = 0
-        original_parsed_temp = {}
-        for match in re.finditer(r"([A-Z][a-z]?)(\d*)", formula_str):
-             element = match.group(1)
-             count_str = match.group(2)
-             count = int(count_str) if count_str else 1
-             original_parsed_temp[element] = original_parsed_temp.get(element, 0) + count
-             original_total_chars += len(match.group(0))
-
-        if original_total_chars != len(formula_str.replace(" ", "")):
-             st.error(f"Failed to parse the entire formula string '{formula_str}'. Check for invalid characters or format.")
+        # Check if the entire string was consumed
+        if last_index != len(formula_cleaned):
+             unparsed_segment = formula_cleaned[last_index:]
+             st.error(f"Could not parse trailing characters: '{unparsed_segment}' in '{formula_str}'")
              return {}
-        if set(parsed.keys()) != set(original_parsed_temp.keys()) or not parsed:
-             if parsed:
-                 st.warning(f"Parsing inconsistency detected for '{formula_str}'. Parsed elements: `{list(parsed.keys())}`. Original elements: `{list(original_parsed_temp.keys())}`. Proceeding with parsed data.")
-             else:
-                 st.error(f"Failed to parse formula '{formula_str}'.")
-                 return {}
+
+        if not parsed: # Handle cases where regex might match nothing valid
+             st.error(f"Could not parse any elements from '{formula_str}'. Check format.")
+             return {}
+
+        # Basic validation comparing parsed elements vs original string structure
+        # (This is complex; the current checks mainly ensure full string consumption
+        # and valid element/number patterns)
+
         return parsed
     except Exception as e:
-        st.error(f"Error parsing formula '{formula_str}': {e}")
+        st.error(f"Unexpected error parsing formula '{formula_str}': {e}")
         return {}
 # --- End Placeholder ---
 
@@ -121,58 +108,119 @@ def predict_critical_temperature(feature_vector: pd.DataFrame, atomic_numbers: l
 
 
 # --- Streamlit App Layout and Logic ---
-st.set_page_config(page_title="Superconductor Tc Predictor", page_icon="🧊", layout="centered")
+st.set_page_config(page_title="Superconductor Tc Predictor", page_icon="✨", layout="centered") # Changed icon
 
-# --- Define CSS for Light and Dark Themes ---
-CONSISTENT_RADIUS = "6px"
-RESULT_BOX_RADIUS = "8px"
+# --- Define CSS for the App (Permanent Dark Theme) ---
+APP_RADIUS = "8px"  # Slightly larger radius for a softer look
+ACCENT_COLOR = "#00CED1" # Vibrant Dark Turquoise
+ACCENT_COLOR_HOVER = "#00B0A8" # Slightly darker for hover
+ACCENT_COLOR_ACTIVE = "#008F86" # Even darker for active
+BG_COLOR = "#1A1A2E" # Dark blue/purple background
+COMPONENT_BG_COLOR = "#162447" # Slightly lighter component background
+TEXT_COLOR = "#E0E0E0" # Light text
+TEXT_COLOR_MUTED = "#A0AEC0" # Muted text (like placeholders)
+BORDER_COLOR = "#4A5568" # Subtle border color
 
-# --- Common CSS Rules (Applied in both themes) ---
-common_css = f"""
+app_css = f"""
 <style>
-    /* --- TOGGLE WORKAROUND V4: Style stToggle container directly, using 'background' --- */
-    div[data-testid="stToggle"] {{
-        display: block !important;           /* Ensure it behaves like a block */
-        background: #343A40 !important;      /* Dark background always (using 'background') */
-        padding: 10px 15px !important;       /* Padding around toggle */
-        border-radius: {CONSISTENT_RADIUS} !important; /* Match other radii */
-        margin-bottom: 1rem !important;       /* Add some space below */
-        /* border: 1px solid #5A96B3 !important; /* Temporarily removed border */
+    /* --- Base Styles --- */
+    body, .stApp {{
+        background-color: {BG_COLOR} !important;
+        color: {TEXT_COLOR} !important;
+        font-family: 'Inter', sans-serif; /* Optional: Use a specific clean font */
     }}
-    /* Ensure label inside dark toggle container is light */
-    div[data-testid="stToggle"] label {{
-         color: #E0E0E0 !important; /* Light grey text always */
-         display: flex !important; /* Improve label alignment */
-         align-items: center !important;
+    h1 {{
+        color: {ACCENT_COLOR};
+        text-align: center;
+        font-weight: 700; /* Bolder title */
+        margin-bottom: 1.5rem; /* More space below title */
     }}
 
-    /* --- INPUT OUTLINE FIX: Remove default browser outline on focus --- */
+    /* --- Input Field --- */
+    .stTextInput label {{
+        color: {ACCENT_COLOR};
+        font-weight: 600; /* Semi-bold label */
+        margin-bottom: 0.5rem; /* Space between label and input */
+    }}
+    div[data-testid="stTextInput"] input {{
+        border: 1px solid {BORDER_COLOR} !important;
+        border-radius: {APP_RADIUS} !important;
+        background-color: {COMPONENT_BG_COLOR} !important;
+        color: {TEXT_COLOR} !important;
+        padding: 12px 15px !important; /* Slightly more padding */
+        transition: border-color 0.3s ease, box-shadow 0.3s ease; /* Smooth transition */
+    }}
+    /* Input focus style */
     div[data-testid="stTextInput"] input:focus {{
         outline: none !important;
-        box-shadow: none !important; /* Also remove potential box-shadow outline */
+        border-color: {ACCENT_COLOR} !important; /* Highlight border on focus */
+        box-shadow: 0 0 0 3px rgba(0, 206, 209, 0.3) !important; /* Subtle glow effect */
+    }}
+    .stTextInput input::placeholder {{
+        color: {TEXT_COLOR_MUTED} !important;
+        opacity: 1;
     }}
 
-    /* Base styles */
-    h1 {{ text-align: center; }}
-    .stTextInput label {{ font-weight: bold; }}
+    /* --- Button --- */
     .stButton button {{
+        background-color: {ACCENT_COLOR} !important;
+        color: #FFFFFF !important; /* White text on accent button */
         border: none !important;
-        padding: 10px 20px !important;
-        border-radius: {CONSISTENT_RADIUS} !important;
-        font-weight: bold !important;
-        transition: background-color 0.3s ease !important;
+        padding: 12px 24px !important; /* More padding */
+        border-radius: {APP_RADIUS} !important;
+        font-weight: 600 !important; /* Semi-bold text */
+        transition: background-color 0.3s ease, transform 0.1s ease !important;
+        width: 100%; /* Make button full width */
+        margin-top: 1rem; /* Space above button */
     }}
-    .result-box {{
-        border-radius: {RESULT_BOX_RADIUS}; padding: 20px; margin-top: 20px;
-        text-align: center;
+    .stButton button:hover {{
+        background-color: {ACCENT_COLOR_HOVER} !important;
+        transform: translateY(-2px); /* Slight lift on hover */
     }}
-    .result-box strong {{ font-size: 1.5em; }}
-    .result-box span {{ font-size: 1.1em; }}
+    .stButton button:active {{
+        background-color: {ACCENT_COLOR_ACTIVE} !important;
+        transform: translateY(0px); /* Back to normal on click */
+    }}
+    /* Center the button if needed (depends on Streamlit version) */
+    /* div[data-testid="stVerticalBlock"] div[data-testid="stButton"] {{
+        display: flex;
+        justify-content: center;
+    }} */
 
-    /* Expander container */
+
+    /* --- Result Box --- */
+    .result-box {{
+        background: linear-gradient(135deg, {COMPONENT_BG_COLOR}, {BG_COLOR}); /* Subtle gradient */
+        border: 1px solid {ACCENT_COLOR}; /* Accent border */
+        border-radius: {APP_RADIUS};
+        padding: 25px 30px; /* Generous padding */
+        margin-top: 2rem; /* More space above result */
+        text-align: center;
+        box-shadow: 0 6px 12px rgba(0, 206, 209, 0.15); /* Soft shadow */
+        transition: transform 0.3s ease;
+    }}
+     .result-box:hover {{
+         transform: translateY(-3px); /* Slight lift on hover */
+     }}
+    .result-box strong {{
+        color: {ACCENT_COLOR};
+        font-size: 2.5em; /* Larger result font */
+        font-weight: 700;
+        display: block; /* Ensure it takes full width */
+        margin-top: 0.5rem; /* Space between label and result */
+    }}
+    .result-box span {{
+        color: {TEXT_COLOR};
+        font-size: 1.1em;
+    }}
+
+    /* --- Expander --- */
     div[data-testid="stExpander"] {{
-        border-radius: {CONSISTENT_RADIUS} !important;
+        border: 1px solid {BORDER_COLOR} !important;
+        border-radius: {APP_RADIUS} !important;
+        background-color: {COMPONENT_BG_COLOR} !important;
         overflow: hidden !important;
+        margin-top: 1.5rem; /* Space above expander */
     }}
     /* Expander header container */
     div[data-testid="stExpander"] > div:first-child {{
@@ -181,145 +229,119 @@ common_css = f"""
     }}
      /* Expander header text/icon area */
      div[data-testid="stExpander"] summary {{
-        font-weight: bold !important;
+        font-weight: 600 !important;
+        color: {TEXT_COLOR} !important;
         border-radius: 0 !important;
-        padding: 0.5rem 1rem !important;
-        border-bottom: 1px solid; /* Color set in theme */
+        padding: 0.75rem 1.25rem !important; /* Adjust padding */
+        border-bottom: 1px solid {BORDER_COLOR} !important;
+        transition: background-color 0.3s ease;
      }}
+      div[data-testid="stExpander"] summary:hover {{
+          background-color: rgba(255, 255, 255, 0.05); /* Subtle hover */
+      }}
     /* Expander content area */
     div[data-testid="stExpander"] .streamlit-expanderContent div {{
-        padding: 1rem !important;
+        color: {TEXT_COLOR} !important;
+        padding: 1.25rem !important; /* Adjust padding */
+        border-top: none !important; /* Ensure no double border */
     }}
+    /* Style dataframes inside expander */
+     div[data-testid="stExpander"] .stDataFrame {{
+         border: 1px solid {BORDER_COLOR};
+         border-radius: {APP_RADIUS};
+     }}
 
+
+    /* --- Code Blocks --- */
      code {{
-         padding: 2px 5px !important;
-         border-radius: {CONSISTENT_RADIUS} !important;
+         background-color: {BG_COLOR} !important; /* Match main background */
+         color: {ACCENT_COLOR} !important; /* Accent color for code */
+         padding: 3px 6px !important;
+         border-radius: {APP_RADIUS} !important;
+         border: 1px solid {BORDER_COLOR}; /* Subtle border */
+         font-size: 0.9em;
     }}
+
+    /* --- General Text & Links --- */
+    .stMarkdown, .stWrite, div[data-testid="stText"], div[data-testid="stForm"], .stCaption {{
+        color: {TEXT_COLOR} !important;
+    }}
+     .stCaption {{
+         color: {TEXT_COLOR_MUTED} !important; /* Muted color for caption */
+         text-align: center;
+         margin-top: 2rem;
+     }}
+    a {{
+        color: {ACCENT_COLOR} !important;
+        text-decoration: none !important; /* Remove underline */
+        transition: color 0.3s ease;
+    }}
+    a:hover {{
+        color: {ACCENT_COLOR_HOVER} !important;
+        text-decoration: underline !important; /* Add underline on hover */
+    }}
+
+    /* --- Remove Toggle Styling (No longer needed) --- */
+    div[data-testid="stToggle"] {{
+        display: none !important; /* Hide the toggle completely */
+    }}
+
 </style>
 """
 
-# --- Light Theme Specific CSS ---
-light_theme_css = f"""
-<style>
-    body, .stApp {{ background-color: #FFFFFF !important; color: #333333 !important; }}
-    h1 {{ color: #0B3D91; }}
-    .stTextInput label {{ color: #0B3D91; }}
-    div[data-testid="stTextInput"] input {{
-        border: 1px solid #83CBEB !important;
-        border-radius: {CONSISTENT_RADIUS} !important;
-        background-color: #F0F8FF !important;
-        color: #333333 !important;
-        padding: 10px !important;
-    }}
-    .stTextInput input::placeholder {{ color: #777777 !important; opacity: 1; }}
-    .stButton button {{ background-color: #FFAA5C !important; color: white !important; }}
-    .stButton button:hover {{ background-color: #D98B4A !important; }}
-    .stButton button:active {{ background-color: #BF7A40 !important; }}
-    .result-box {{
-        background-color: #C1E5F5; border: 2px solid #83CBEB;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }}
-    .result-box strong {{ color: #0B3D91; }}
-    .result-box span {{ color: #333333; }}
-    div[data-testid="stExpander"] {{ border: 1px solid #FFDBBA !important; background-color: #FFF9F3 !important; }}
-    div[data-testid="stExpander"] summary {{ color: #0B3D91 !important; border-color: #FFDBBA !important; }}
-    div[data-testid="stExpander"] .streamlit-expanderContent div {{ color: #333333 !important; }}
-    .stMarkdown, .stWrite, div[data-testid="stText"], div[data-testid="stForm"] {{ color: #333333 !important; }}
-     code {{ color: #0B3D91 !important; background-color: #eef !important; }}
-</style>
-"""
-
-# --- Dark Theme Specific CSS ---
-dark_theme_css = f"""
-<style>
-    body, .stApp {{ background-color: #212529 !important; color: #E0E0E0 !important; }}
-    h1 {{ color: #A8D5EF; }}
-    .stTextInput label {{ color: #A8D5EF; }}
-    div[data-testid="stTextInput"] input {{
-        border: 1px solid #5A96B3 !important;
-        border-radius: {CONSISTENT_RADIUS} !important;
-        background-color: #343A40 !important;
-        color: #E0E0E0 !important;
-        padding: 10px !important;
-    }}
-    .stTextInput input::placeholder {{ color: #6C757D !important; opacity: 1; }}
-    .stButton button {{ background-color: #FFAA5C !important; color: white !important; }}
-    .stButton button:hover {{ background-color: #D98B4A !important; }}
-    .stButton button:active {{ background-color: #BF7A40 !important; }}
-    .result-box {{
-        background-color: #0B3D91; border: 2px solid #83CBEB;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-    }}
-    .result-box strong {{ color: #C1E5F5; }}
-    .result-box span {{ color: #E0E0E0; }}
-    div[data-testid="stExpander"] {{ border: 1px solid #A0522D !important; background-color: #343A40 !important; }}
-    div[data-testid="stExpander"] summary {{ color: #A8D5EF !important; border-color: #A0522D !important; }}
-    div[data-testid="stExpander"] .streamlit-expanderContent div {{ color: #E0E0E0 !important; }}
-    .stMarkdown, .stWrite, div[data-testid="stText"], div[data-testid="stForm"] {{ color: #E0E0E0 !important; }}
-     code {{ color: #A8D5EF !important; background-color: #343A40 !important; }}
-</style>
-"""
-
-# --- Apply Selected Theme ---
-st.markdown(common_css, unsafe_allow_html=True)
-if st.session_state.theme == 'dark':
-    st.markdown(dark_theme_css, unsafe_allow_html=True)
-else:
-    st.markdown(light_theme_css, unsafe_allow_html=True)
+# --- Apply Theme ---
+st.markdown(app_css, unsafe_allow_html=True)
 
 
 # --- App Title ---
-st.title("Superconductor Critical Temperature (Tc) Predictor")
-
-# --- Theme Toggle ---
-# Attempting to style the container directly again using common_css
-st.toggle(
-    "Dark Mode",
-    key='theme_toggle',
-    value=(st.session_state.theme == 'dark'),
-    on_change=toggle_theme,
-    help="Switch between light and dark themes"
-)
+st.title("Superconductor Tc Predictor")
+# Removed the toggle widget
 
 st.markdown("---") # Divider
 
 # --- Input Section ---
-formula_input = st.text_input(
-    "Enter Chemical Formula:",
-    placeholder="e.g., MgB2, YBa2Cu3O7",
-    help="Enter the chemical formula of the material."
-)
+# Use a form to group input and button
+with st.form("prediction_form"):
+    formula_input = st.text_input(
+        "Enter Chemical Formula:",
+        placeholder="e.g., MgB2, YBa2Cu3O7",
+        help="Enter the chemical formula of the material (e.g., H2O, Fe2O3)."
+    )
+    submitted = st.form_submit_button("✨ Predict Tc ✨") # Changed button text
 
 # --- Processing and Output ---
-if formula_input:
+if submitted and formula_input: # Process only when form is submitted
     st.write("Parsing formula...")
     parsed = parse_formula(formula_input)
 
     if parsed:
-        st.write(f"Parsed Formula: `{parsed}`")
+        # Displaying parsed formula immediately after successful parsing
+        # st.write(f"Parsed Formula: `{parsed}`") # Optional: Can show in expander instead
+
         st.write("Generating features...")
         features, atom_nums, coeffs = generate_features(parsed)
 
         if isinstance(features, pd.DataFrame) and not features.empty:
-            with st.expander("View Generated Features & Input Details"):
-                st.write("Input Elements:")
-                st.json(parsed)
-                st.write("Atomic Numbers Used:")
+            with st.expander("View Input Details & Features"): # Changed expander title
+                st.write("**Input Interpretation:**")
+                st.json(parsed) # Use st.json for better dict display
+                st.write("**Atomic Numbers Used:**")
                 st.write(f"`{atom_nums}`")
-                st.write("Coefficients Used:")
+                st.write("**Coefficients Used:**")
                 st.write(f"`{coeffs}`")
-                st.write("Example Feature Vector (Dummy Data):")
+                st.write("**Example Feature Vector (Dummy Data):**")
                 st.dataframe(features)
 
             st.write("Predicting critical temperature...")
             predicted_tc = predict_critical_temperature(features, atom_nums, coeffs)
 
-            st.markdown("---")
+            st.markdown("---") # Divider before result
             if predicted_tc is not None:
+                # Display result using the custom styled div
                 st.markdown(
                     f"""
                     <div class="result-box">
-                        <span>Predicted Critical Temperature (Tc) for <strong>{formula_input}</strong>:</span><br>
+                        <span>Predicted Critical Temperature (Tc) for <strong>{formula_input}</strong>:</span>
                         <strong>{predicted_tc:.2f} K</strong>
                     </div>
                     """,
@@ -331,7 +353,12 @@ if formula_input:
              st.error("Feature generation failed. Cannot proceed.")
         else:
              st.warning("Feature generation resulted in empty data. Cannot predict Tc.")
+    # else: # Parsing failed - error message already shown by parse_formula
+
+elif submitted and not formula_input:
+     st.warning("Please enter a chemical formula before predicting.")
+
 
 # --- Footer ---
 st.markdown("---")
-st.caption("Note: This app uses placeholder functions. Replace them with your actual implementation.")
+st.caption("✨ Built with Streamlit | Placeholder Model ✨") # Updated caption
