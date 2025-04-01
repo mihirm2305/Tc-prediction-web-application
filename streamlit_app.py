@@ -237,7 +237,7 @@ light_theme_css = """
     }
     /* Toggle button specific style if needed */
     div[data-testid="stToggle"] label {
-        color: #333333 !important; /* Ensure toggle label is visible */
+        color: red !important; /* Ensure toggle label is visible */
     }
 </style>
 """
