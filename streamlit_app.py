@@ -157,7 +157,7 @@ st.set_page_config(
 # Colors:
 # Blues: #C1E5F5 (light), #83CBEB (dark), #0B3D91 (darker)
 # Oranges: #FFDBBA (light), #FFAA5C (dark)
-# Greys: #333333 (dark for text)
+# Greys: #333333 (dark for text), #777777 (medium for placeholder)
 st.markdown("""
 <style>
     /* Main background and default text color */
@@ -186,6 +186,30 @@ st.markdown("""
         background-color: #F0F8FF; /* Very light blue background */
         color: #333333; /* Ensure input text is also dark */
     }
+
+    /* Style the placeholder text in the input box */
+    .stTextInput input::placeholder {
+        color: #777777 !important; /* Medium-dark grey for placeholder text */
+        opacity: 1; /* Ensure browser doesn't make it too transparent */
+    }
+    /* Add vendor prefixes for broader compatibility if needed */
+    .stTextInput input::-webkit-input-placeholder { /* Chrome/Opera/Safari */
+        color: #777777 !important;
+        opacity: 1;
+    }
+    .stTextInput input::-moz-placeholder { /* Firefox 19+ */
+         color: #777777 !important;
+         opacity: 1;
+    }
+    .stTextInput input:-ms-input-placeholder { /* IE 10+ */
+         color: #777777 !important;
+         opacity: 1;
+    }
+    .stTextInput input::-ms-input-placeholder { /* Edge */
+         color: #777777 !important;
+         opacity: 1;
+    }
+
 
     /* Button styling */
     .stButton button {
@@ -263,7 +287,7 @@ st.markdown("---") # Divider
 # --- Input Section ---
 formula_input = st.text_input(
     "Enter Chemical Formula:",
-    placeholder="e.g., MgB2, YBa2Cu3O7",
+    placeholder="e.g., MgB2, YBa2Cu3O7", # This placeholder text should now be darker
     help="Enter the chemical formula of the material."
 )
 
