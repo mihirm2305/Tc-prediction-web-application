@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd # Used for feature vector display example
 import numpy as np # Used for dummy data generation
+import time # To simulate work for progress bar
 
 # --- Placeholder Functions ---
 # (parse_formula, generate_features, predict_critical_temperature remain the same)
@@ -47,7 +48,7 @@ def parse_formula(formula_str: str) -> dict:
         # Basic validation comparing parsed elements vs original string structure
         # (This is complex; the current checks mainly ensure full string consumption
         # and valid element/number patterns)
-
+        time.sleep(0.1) # Simulate work
         return parsed
     except Exception as e:
         st.error(f"Unexpected error parsing formula '{formula_str}': {e}")
@@ -82,6 +83,7 @@ def generate_features(parsed_formula: dict) -> tuple[pd.DataFrame | None, list[i
         num_features = 10
         feature_vector_data = np.random.rand(1, num_features)
         feature_vector_df = pd.DataFrame(feature_vector_data, columns=[f'feature_{i+1}' for i in range(num_features)])
+        time.sleep(0.2) # Simulate work
         return feature_vector_df, atomic_numbers, coefficients
     except Exception as e:
         st.error(f"Error generating features: {e}")
@@ -99,6 +101,7 @@ def predict_critical_temperature(feature_vector: pd.DataFrame, atomic_numbers: l
         random_factor = np.random.rand() * 20
         predicted_tc = base_tc + atomic_sum_effect * 0.5 + random_factor
         predicted_tc = max(0.0, min(predicted_tc, 200.0))
+        time.sleep(0.3) # Simulate work
         return predicted_tc
     except Exception as e:
         st.error(f"Error during prediction: {e}")
@@ -288,6 +291,11 @@ app_css = f"""
         left: -9999px; /* Move off-screen */
     }}
 
+    /* --- Progress Bar Styling --- */
+    div[data-testid="stProgressBar"] > div > div > div > div {{
+        background-image: linear-gradient(to right, {ACCENT_COLOR_ACTIVE} , {ACCENT_COLOR}) !important; /* Gradient progress bar */
+    }}
+
 </style>
 """
 
@@ -307,23 +315,34 @@ with st.form("prediction_form"):
     formula_input = st.text_input(
         "Enter Chemical Formula:",
         placeholder="e.g., MgB2, YBa2Cu3O7",
-        help="Enter the chemical formula of the material (e.g., H2O, Fe2O3)."
+        help="Enter the chemical formula (e.g., H2O, Fe2O3). Press Enter to submit." # Updated help text
     )
     submitted = st.form_submit_button("✨ Predict Tc ✨") # Changed button text
 
 # --- Processing and Output ---
 if submitted and formula_input: # Process only when form is submitted
-    st.write("Parsing formula...")
+    # Initialize progress bar
+    progress_text = "Starting prediction process..."
+    progress_bar = st.progress(0, text=progress_text)
+
     parsed = parse_formula(formula_input)
 
     if parsed:
-        # Displaying parsed formula immediately after successful parsing
-        # st.write(f"Parsed Formula: `{parsed}`") # Optional: Can show in expander instead
+        # Update progress after parsing
+        progress_bar.progress(33, text="Parsed formula. Generating features...")
 
-        st.write("Generating features...")
         features, atom_nums, coeffs = generate_features(parsed)
 
         if isinstance(features, pd.DataFrame) and not features.empty:
+            # Update progress after feature generation
+            progress_bar.progress(66, text="Generated features. Predicting Tc...")
+
+            predicted_tc = predict_critical_temperature(features, atom_nums, coeffs)
+
+            # Update progress after prediction
+            progress_bar.progress(100, text="Prediction Complete!")
+
+            # Display results *after* progress bar completes
             with st.expander("View Input Details & Features"): # Changed expander title
                 st.write("**Input Interpretation:**")
                 st.json(parsed) # Use st.json for better dict display
@@ -333,9 +352,6 @@ if submitted and formula_input: # Process only when form is submitted
                 st.write(f"`{coeffs}`")
                 st.write("**Example Feature Vector (Dummy Data):**")
                 st.dataframe(features)
-
-            st.write("Predicting critical temperature...")
-            predicted_tc = predict_critical_temperature(features, atom_nums, coeffs)
 
             st.markdown("---") # Divider before result
             if predicted_tc is not None:
@@ -351,11 +367,25 @@ if submitted and formula_input: # Process only when form is submitted
                 )
             else:
                 st.error("Prediction failed after feature generation.")
+                # Optionally hide progress bar on error
+                # progress_bar.empty()
         elif features is None:
              st.error("Feature generation failed. Cannot proceed.")
+             # Optionally hide progress bar on error
+             # progress_bar.empty()
         else:
              st.warning("Feature generation resulted in empty data. Cannot predict Tc.")
-    # else: # Parsing failed - error message already shown by parse_formula
+             # Optionally hide progress bar on warning
+             # progress_bar.empty()
+
+        # Optional: Add a small delay before the progress bar disappears automatically
+        # time.sleep(1.5)
+        # progress_bar.empty() # Remove progress bar after completion/display
+
+    else: # Parsing failed - error message already shown by parse_formula
+        # Optionally hide progress bar on parsing error
+        progress_bar.empty()
+
 
 elif submitted and not formula_input:
      st.warning("Please enter a chemical formula before predicting.")
