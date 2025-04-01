@@ -130,25 +130,24 @@ RESULT_BOX_RADIUS = "8px"
 # --- Common CSS Rules (Applied in both themes) ---
 common_css = f"""
 <style>
-    /* --- TOGGLE WORKAROUND V2: Custom container class --- */
-    .dark-toggle-container {{
+    /* --- TOGGLE WORKAROUND V3: Style stToggle container directly --- */
+    div[data-testid="stToggle"] {{
+        display: block !important; /* Ensure it behaves like a block for background */
         background-color: #343A40 !important; /* Dark background always */
         padding: 10px 15px !important;       /* Padding around toggle */
         border-radius: {CONSISTENT_RADIUS} !important; /* Match other radii */
         margin-bottom: 1rem !important;       /* Add some space below */
         border: 1px solid #5A96B3 !important; /* Add a subtle border */
     }}
-    /* Style the toggle *inside* the custom container */
-    .dark-toggle-container div[data-testid="stToggle"] {{
-        margin-bottom: 0 !important; /* Remove default margin */
-        border: none !important; /* Remove default border */
-        padding: 0 !important; /* Remove default padding */
-        background-color: transparent !important; /* Make toggle bg transparent */
-    }}
     /* Ensure label inside dark toggle container is light */
-    .dark-toggle-container div[data-testid="stToggle"] label {{
+    div[data-testid="stToggle"] label {{
          color: #E0E0E0 !important; /* Light grey text always */
+         display: flex !important; /* Improve label alignment */
+         align-items: center !important;
     }}
+    /* Optional: Adjust spacing between toggle switch and label if needed */
+    /* div[data-testid="stToggle"] label span:last-child {{ margin-left: 8px; }} */
+
 
     /* --- INPUT OUTLINE FIX: Remove default browser outline on focus --- */
     div[data-testid="stTextInput"] input:focus {{
@@ -276,19 +275,15 @@ else:
 st.title("Superconductor Critical Temperature (Tc) Predictor")
 
 # --- Theme Toggle ---
-# Wrap toggle in a container and apply custom class via markdown
-# This container will be styled by `.dark-toggle-container` in common_css
-with st.container():
-    st.markdown('<div class="dark-toggle-container">', unsafe_allow_html=True)
-    st.toggle(
-        "Dark Mode",
-        key='theme_toggle',
-        value=(st.session_state.theme == 'dark'),
-        on_change=toggle_theme,
-        help="Switch between light and dark themes"
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
-
+# Removed the container and markdown wrapper. Styles are now applied
+# directly to div[data-testid="stToggle"] via common_css.
+st.toggle(
+    "Dark Mode",
+    key='theme_toggle',
+    value=(st.session_state.theme == 'dark'),
+    on_change=toggle_theme,
+    help="Switch between light and dark themes"
+)
 
 st.markdown("---") # Divider
 
