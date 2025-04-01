@@ -2,6 +2,16 @@ import streamlit as st
 import pandas as pd # Used for feature vector display example
 import numpy as np # Used for dummy data generation
 
+# --- Initialize Session State ---
+if 'theme' not in st.session_state:
+    st.session_state.theme = 'light' # Default to light mode
+
+# --- Function to Toggle Theme ---
+def toggle_theme():
+    st.session_state.theme = 'dark' if st.session_state.theme == 'light' else 'light'
+
+# --- Placeholder Functions ---
+# (parse_formula, generate_features, predict_critical_temperature remain the same as V3)
 # --- Placeholder Functions ---
 # These functions need to be implemented with your actual logic.
 
@@ -146,179 +156,228 @@ def predict_critical_temperature(feature_vector: pd.DataFrame, atomic_numbers: l
 
 # --- Streamlit App Layout and Logic ---
 
-# Page configuration (optional, but good practice)
+# Page configuration (must be the first Streamlit command)
 st.set_page_config(
     page_title="Superconductor Tc Predictor",
-    page_icon="🧊", # You can use emojis or provide a URL/path
-    layout="centered" # Can be "wide" or "centered"
+    page_icon="🧊",
+    layout="centered"
 )
 
-# Apply Custom CSS for styling
-# Colors:
-# Blues: #C1E5F5 (light), #83CBEB (dark), #0B3D91 (darker)
-# Oranges: #FFDBBA (light), #FFAA5C (dark)
-# Greys: #333333 (dark for text), #777777 (medium for placeholder)
-st.markdown("""
+# --- Define CSS for Light and Dark Themes ---
+
+light_theme_css = """
 <style>
     /* Main background and default text color */
-    .stApp {
-        background-color: #FFFFFF; /* White background */
-        color: #333333; /* Default dark grey text color for visibility */
+    body, .stApp {
+        background-color: #FFFFFF !important; /* White background */
+        color: #333333 !important; /* Default dark grey text color */
     }
 
     /* Title style */
     h1 {
-        color: #0B3D91; /* Darker blue for title */
+        color: #0B3D91;
         text-align: center;
     }
 
     /* Input label */
     .stTextInput label {
-        color: #0B3D91; /* Darker blue */
+        color: #0B3D91;
         font-weight: bold;
     }
 
      /* Input box styling */
     .stTextInput input {
-        border: 1px solid #83CBEB; /* Dark blue border */
+        border: 1px solid #83CBEB;
         border-radius: 5px;
         padding: 10px;
-        background-color: #F0F8FF; /* Very light blue background */
-        color: #333333; /* Ensure input text is also dark */
+        background-color: #F0F8FF;
+        color: #333333;
     }
 
     /* Style the placeholder text in the input box */
-    .stTextInput input::placeholder {
-        color: #777777 !important; /* Medium-dark grey for placeholder text */
-        opacity: 1; /* Ensure browser doesn't make it too transparent */
+    .stTextInput input::placeholder { color: #777777 !important; opacity: 1; }
+    .stTextInput input::-webkit-input-placeholder { color: #777777 !important; opacity: 1; }
+    .stTextInput input::-moz-placeholder { color: #777777 !important; opacity: 1; }
+    .stTextInput input:-ms-input-placeholder { color: #777777 !important; opacity: 1; }
+    .stTextInput input::-ms-input-placeholder { color: #777777 !important; opacity: 1; }
+
+    /* Button styling */
+    .stButton button {
+        background-color: #FFAA5C; color: white; border: none;
+        padding: 10px 20px; border-radius: 5px; font-weight: bold;
+        transition: background-color 0.3s ease;
     }
-    /* Add vendor prefixes for broader compatibility if needed */
-    .stTextInput input::-webkit-input-placeholder { /* Chrome/Opera/Safari */
-        color: #777777 !important;
-        opacity: 1;
+    .stButton button:hover { background-color: #D98B4A; }
+    .stButton button:active { background-color: #BF7A40; }
+
+    /* Result display area */
+    .result-box {
+        background-color: #C1E5F5; border: 2px solid #83CBEB;
+        border-radius: 10px; padding: 20px; margin-top: 20px;
+        text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
-    .stTextInput input::-moz-placeholder { /* Firefox 19+ */
-         color: #777777 !important;
-         opacity: 1;
+    .result-box strong { color: #0B3D91; font-size: 1.5em; }
+    .result-box span { color: #333333; font-size: 1.1em; }
+
+    /* Styling for expander */
+    .stExpander {
+        border: 1px solid #FFDBBA; border-radius: 5px;
+        background-color: #FFF9F3;
     }
-    .stTextInput input:-ms-input-placeholder { /* IE 10+ */
-         color: #777777 !important;
-         opacity: 1;
+    .stExpander header { font-weight: bold; color: #0B3D91; }
+    .stExpander .streamlit-expanderContent div { color: #333333; }
+
+    /* Ensure text written via st.write has good contrast */
+    .stMarkdown, .stWrite, div[data-testid="stText"], div[data-testid="stForm"] {
+         color: #333333 !important;
     }
-    .stTextInput input::-ms-input-placeholder { /* Edge */
-         color: #777777 !important;
-         opacity: 1;
+     code {
+        color: #0B3D91; background-color: #eef;
+        padding: 2px 5px; border-radius: 3px;
     }
+    /* Toggle button specific style if needed */
+    div[data-testid="stToggle"] label {
+        color: #333333 !important; /* Ensure toggle label is visible */
+    }
+</style>
+"""
+
+dark_theme_css = """
+<style>
+    /* Main background and default text color */
+    body, .stApp {
+        background-color: #212529 !important; /* Dark background */
+        color: #E0E0E0 !important; /* Default light grey text color */
+    }
+
+    /* Title style */
+    h1 {
+        color: #A8D5EF; /* Lighter blue for title */
+        text-align: center;
+    }
+
+    /* Input label */
+    .stTextInput label {
+        color: #A8D5EF; /* Lighter blue */
+        font-weight: bold;
+    }
+
+     /* Input box styling */
+    .stTextInput input {
+        border: 1px solid #5A96B3; /* Desaturated dark blue border */
+        border-radius: 5px;
+        padding: 10px;
+        background-color: #343A40; /* Darker grey background */
+        color: #E0E0E0; /* Light text */
+    }
+
+    /* Style the placeholder text in the input box */
+    .stTextInput input::placeholder { color: #6C757D !important; opacity: 1; }
+    .stTextInput input::-webkit-input-placeholder { color: #6C757D !important; opacity: 1; }
+    .stTextInput input::-moz-placeholder { color: #6C757D !important; opacity: 1; }
+    .stTextInput input:-ms-input-placeholder { color: #6C757D !important; opacity: 1; }
+    .stTextInput input::-ms-input-placeholder { color: #6C757D !important; opacity: 1; }
 
 
     /* Button styling */
     .stButton button {
-        background-color: #FFAA5C; /* Dark Orange */
-        color: white; /* White text still okay on this orange */
-        border: none;
-        padding: 10px 20px;
-        border-radius: 5px;
-        font-weight: bold;
-        transition: background-color 0.3s ease; /* Smooth hover effect */
+        background-color: #FFAA5C; color: white; border: none; /* Keep orange, maybe black text? Test white first */
+        padding: 10px 20px; border-radius: 5px; font-weight: bold;
+        transition: background-color 0.3s ease;
     }
-    .stButton button:hover {
-        background-color: #D98B4A; /* Slightly darker orange on hover */
-    }
-    .stButton button:active {
-        background-color: #BF7A40; /* Even darker orange when clicked */
-    }
-
+    .stButton button:hover { background-color: #D98B4A; }
+    .stButton button:active { background-color: #BF7A40; }
 
     /* Result display area */
     .result-box {
-        background-color: #C1E5F5; /* Light Blue */
-        border: 2px solid #83CBEB; /* Dark Blue */
-        border-radius: 10px;
-        padding: 20px;
-        margin-top: 20px;
-        text-align: center;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        background-color: #0B3D91; border: 2px solid #83CBEB; /* Dark blue bg, light blue border */
+        border-radius: 10px; padding: 20px; margin-top: 20px;
+        text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.4); /* Darker shadow */
     }
-    .result-box strong {
-        color: #0B3D91; /* Darker blue for emphasis */
-        font-size: 1.5em; /* Make prediction stand out */
-    }
-    .result-box span {
-         color: #333333; /* Dark grey for text - good contrast on light blue */
-         font-size: 1.1em;
-    }
+    .result-box strong { color: #C1E5F5; font-size: 1.5em; } /* Light blue text */
+    .result-box span { color: #E0E0E0; font-size: 1.1em; } /* Light grey text */
 
-    /* Styling for expander (optional feature display) */
+    /* Styling for expander */
     .stExpander {
-        border: 1px solid #FFDBBA; /* Light orange border */
-        border-radius: 5px;
-        background-color: #FFF9F3; /* Very light orange background */
+        border: 1px solid #A0522D; border-radius: 5px; /* Darker orange border */
+        background-color: #343A40; /* Darker grey background */
     }
-    .stExpander header {
-        font-weight: bold;
-        color: #0B3D91; /* Dark Blue for header text (Improved Contrast) */
-    }
-    /* Ensure expander content text has good contrast too */
-    .stExpander .streamlit-expanderContent div {
-         color: #333333; /* Dark grey for content text */
-    }
+    .stExpander header { font-weight: bold; color: #A8D5EF; } /* Lighter blue header */
+    .stExpander .streamlit-expanderContent div { color: #E0E0E0; } /* Light grey content */
 
     /* Ensure text written via st.write has good contrast */
-    /* This might be covered by .stApp rule, but adding specific rule for safety */
-    .stMarkdown, .stWrite, div[data-testid="stText"] {
-         color: #333333 !important; /* Use !important cautiously if needed */
+    .stMarkdown, .stWrite, div[data-testid="stText"], div[data-testid="stForm"] {
+         color: #E0E0E0 !important;
     }
-    /* Style the code block specifically if needed */
      code {
-        color: #0B3D91; /* Dark blue for code text */
-        background-color: #eef; /* Light background for code */
-        padding: 2px 5px;
-        border-radius: 3px;
+        color: #A8D5EF; background-color: #343A40; /* Light blue text on dark grey */
+        padding: 2px 5px; border-radius: 3px;
     }
-
-
+     /* Toggle button specific style */
+    div[data-testid="stToggle"] label {
+        color: #E0E0E0 !important; /* Ensure toggle label is visible */
+    }
 </style>
-""", unsafe_allow_html=True)
+"""
+
+# --- Apply Selected Theme ---
+if st.session_state.theme == 'dark':
+    st.markdown(dark_theme_css, unsafe_allow_html=True)
+else:
+    st.markdown(light_theme_css, unsafe_allow_html=True)
+
 
 # --- App Title ---
 st.title("Superconductor Critical Temperature (Tc) Predictor")
+
+# --- Theme Toggle ---
+# Place toggle below title, use callback to update state
+st.toggle(
+    "Dark Mode",
+    key='theme_toggle', # Assign key for potential direct access if needed
+    value=(st.session_state.theme == 'dark'), # Set initial value based on state
+    on_change=toggle_theme, # Call function when toggled
+    help="Switch between light and dark themes"
+)
+
 st.markdown("---") # Divider
 
 # --- Input Section ---
 formula_input = st.text_input(
     "Enter Chemical Formula:",
-    placeholder="e.g., MgB2, YBa2Cu3O7", # This placeholder text should now be darker
+    placeholder="e.g., MgB2, YBa2Cu3O7",
     help="Enter the chemical formula of the material."
 )
 
 # --- Processing and Output ---
 if formula_input:
     # 1. Parse the formula
-    st.write("Parsing formula...") # This text should now be visible
+    st.write("Parsing formula...")
     parsed = parse_formula(formula_input)
 
     if parsed:
-        st.write(f"Parsed Formula: `{parsed}`") # This text should now be visible
+        st.write(f"Parsed Formula: `{parsed}`")
 
         # 2. Generate features
-        st.write("Generating features...") # This text should now be visible
+        st.write("Generating features...")
         features, atom_nums, coeffs = generate_features(parsed)
 
         # Check if features is a DataFrame before proceeding
         if isinstance(features, pd.DataFrame) and not features.empty:
             # Optionally display features in an expander
             with st.expander("View Generated Features (Example)"):
-                st.dataframe(features) # Dataframe styling is handled by streamlit
-                st.write(f"Atomic Numbers: `{atom_nums}`") # This text should now be visible
-                st.write(f"Coefficients: `{coeffs}`") # This text should now be visible
+                st.dataframe(features) # Dataframe styling adapts somewhat automatically
+                st.write(f"Atomic Numbers: `{atom_nums}`")
+                st.write(f"Coefficients: `{coeffs}`")
 
             # 3. Predict Tc
-            st.write("Predicting critical temperature...") # This text should now be visible
+            st.write("Predicting critical temperature...")
             predicted_tc = predict_critical_temperature(features, atom_nums, coeffs)
 
             # 4. Display Result
             st.markdown("---") # Divider
             if predicted_tc is not None:
+                # Use markdown with the custom class for styling
                 st.markdown(
                     f"""
                     <div class="result-box">
@@ -336,9 +395,7 @@ if formula_input:
         else: # Handle cases where parsing might have worked but feature gen returned empty valid structures
              st.warning("Feature generation resulted in empty data. Cannot predict Tc.")
 
-
-    # No 'else' needed here for parsed being empty, as parse_formula now handles warnings/errors internally
-
 # Add a footer (optional)
 st.markdown("---")
 st.caption("Note: This app uses placeholder functions for parsing, feature generation, and prediction. Replace them with your actual implementation.")
+
