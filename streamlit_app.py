@@ -4,13 +4,6 @@ import numpy as np # Used for dummy data generation
 import time # To simulate work for progress bar
 import torch
 import torch.nn as nn
-import numpy as np
-import pandas as pd
-import os
-import torch
-import torch.nn as nn
-import numpy as np
-import pandas as pd
 import os
 import re # Added for formula parsing
 from collections import defaultdict # Added for parsing
@@ -73,8 +66,8 @@ def parse_formula(formula_str: str) -> dict:
 
     # Basic check for allowed characters (letters, numbers, parentheses, brackets, dots)
     if not re.fullmatch(r'^[a-zA-Z0-9\(\)\[\]\.]+$', formula_cleaned):
-         st.error(f"Formula '{formula_str}' contains invalid characters.")
-         return {}
+          st.error(f"Formula '{formula_str}' contains invalid characters.")
+          return {}
 
     element_counts = defaultdict(float)
     i = 0
@@ -109,8 +102,8 @@ def parse_formula(formula_str: str) -> dict:
             sub_elements_dict = parse_formula(sub_formula)
 
             if not sub_elements_dict: # Check if recursive call returned empty dict (error)
-                 # Error message should have been displayed by the recursive call
-                 return {} # Propagate failure
+                  # Error message should have been displayed by the recursive call
+                  return {} # Propagate failure
 
             # Find the multiplier after the closing bracket
             k = j + 1
@@ -122,11 +115,11 @@ def parse_formula(formula_str: str) -> dict:
             try:
                 multiplier = float(multiplier_str) if multiplier_str else 1.0
                 if multiplier <= 0:
-                     st.error(f"Multiplier after bracket '{closing_bracket}' must be positive, found '{multiplier_str}'.")
-                     return {}
+                      st.error(f"Multiplier after bracket '{closing_bracket}' must be positive, found '{multiplier_str}'.")
+                      return {}
             except ValueError:
-                 st.error(f"Invalid multiplier format after bracket '{closing_bracket}': '{multiplier_str}'")
-                 return {}
+                  st.error(f"Invalid multiplier format after bracket '{closing_bracket}': '{multiplier_str}'")
+                  return {}
 
             # Add counts from sub-formula multiplied by the multiplier
             for symbol, sub_count in sub_elements_dict.items():
@@ -151,8 +144,8 @@ def parse_formula(formula_str: str) -> dict:
                 return {}
             atomic_number = element_cache[symbol]
             if atomic_number >= NUM_ELEMENTS:
-                 st.error(f"Element '{symbol}' (Z={atomic_number}) exceeds the maximum atomic number ({NUM_ELEMENTS - 1}) supported by the model.")
-                 return {}
+                  st.error(f"Element '{symbol}' (Z={atomic_number}) exceeds the maximum atomic number ({NUM_ELEMENTS - 1}) supported by the model.")
+                  return {}
 
             # Find coefficient
             count_str = ''
@@ -164,11 +157,11 @@ def parse_formula(formula_str: str) -> dict:
             try:
                 count = float(count_str) if count_str else 1.0
                 if count <= 0:
-                     st.error(f"Coefficient for element '{symbol}' must be positive, found '{count_str}'.")
-                     return {}
+                      st.error(f"Coefficient for element '{symbol}' must be positive, found '{count_str}'.")
+                      return {}
             except ValueError:
-                 st.error(f"Invalid coefficient format for element '{symbol}': '{count_str}'")
-                 return {}
+                  st.error(f"Invalid coefficient format for element '{symbol}': '{count_str}'")
+                  return {}
 
             element_counts[symbol] += count
             parsed_elements_in_scope.add(symbol)
@@ -182,8 +175,8 @@ def parse_formula(formula_str: str) -> dict:
     # --- Final Validations ---
     # Check if any elements were parsed
     if not element_counts:
-         st.error(f"Could not parse any valid elements/structure from '{formula_str}'.")
-         return {}
+          st.error(f"Could not parse any valid elements/structure from '{formula_str}'.")
+          return {}
 
     # Check max unique elements limit
     if len(parsed_elements_in_scope) > MAX_ATOMIC_LEN:
@@ -211,8 +204,8 @@ def load_elemental_data(path=ELEMENTAL_DATA_PATH):
         element_data = pd.read_csv(path, index_col=0) # Assuming first column is element symbol index
         # Basic check for required 'Z' column
         if 'Z' not in element_data.columns:
-             st.error(f"Elemental data file ('{path}') is missing the required 'Z' column for atomic numbers.")
-             return None
+              st.error(f"Elemental data file ('{path}') is missing the required 'Z' column for atomic numbers.")
+              return None
         print(f"Elemental data '{path}' loaded successfully.")
         # Optional: Further cleaning if needed (e.g., drop specific columns like Group/Period if they exist)
         element_data = element_data.drop(columns=[col for col in element_data.columns if 'Group' in col or 'Period' in col or 'Neutron' in col], errors='ignore')
@@ -289,13 +282,13 @@ def calculate_weighted_stats(elements_dict: dict, element_data_df: pd.DataFrame)
             statistics[feature + '_weighted_mean'] = weighted_mean
             statistics[feature + '_weighted_std'] = weighted_std
         except ZeroDivisionError:
-             st.warning(f"ZeroDivisionError during stats calculation for '{feature}'. Setting stats to NaN.")
-             statistics[feature + '_weighted_mean'] = np.nan
-             statistics[feature + '_weighted_std'] = np.nan
+              st.warning(f"ZeroDivisionError during stats calculation for '{feature}'. Setting stats to NaN.")
+              statistics[feature + '_weighted_mean'] = np.nan
+              statistics[feature + '_weighted_std'] = np.nan
         except Exception as e:
-             st.error(f"Error calculating stats for '{feature}': {e}")
-             statistics[feature + '_weighted_mean'] = np.nan
-             statistics[feature + '_weighted_std'] = np.nan
+              st.error(f"Error calculating stats for '{feature}': {e}")
+              statistics[feature + '_weighted_mean'] = np.nan
+              statistics[feature + '_weighted_std'] = np.nan
 
 
     # Sort atomic numbers and coefficients by element symbol for consistent internal representation if needed
@@ -354,8 +347,8 @@ def generate_features(parsed_formula: dict) -> tuple[pd.DataFrame | None, list[i
         original_atomic_numbers = [element_cache.get(el, -1) for el in original_elements]
         # Double check if any element wasn't in cache (shouldn't happen if parse_formula worked)
         if -1 in original_atomic_numbers:
-             st.error("Internal Error: Element present in parsed formula but not in element_cache.")
-             return None, [], []
+              st.error("Internal Error: Element present in parsed formula but not in element_cache.")
+              return None, [], []
 
 
         # 2. Create the feature vector DataFrame with only the TOP_FEATURES
@@ -372,7 +365,7 @@ def generate_features(parsed_formula: dict) -> tuple[pd.DataFrame | None, list[i
 
         # Issue a single warning if any features were filled with placeholders
         if missing_model_features:
-             st.warning(f"Could not calculate values for required features: {', '.join(missing_model_features)}. Filled with 0.0, prediction accuracy may be affected.")
+              st.warning(f"Could not calculate values for required features: {', '.join(missing_model_features)}. Filled with 0.0, prediction accuracy may be affected.")
 
         # Create DataFrame ensuring columns are in the exact order of TOP_FEATURES
         feature_vector_df = pd.DataFrame(feature_vector_data, columns=TOP_FEATURES)
@@ -440,7 +433,7 @@ def load_supercon_model(model_path=MODEL_PATH):
     # Check if model file exists
     if not os.path.exists(model_path):
         st.error(f"Model file '{model_path}' not found. Cannot perform predictions.")
-        st.warning("Please ensure the trained model file ('model_web.pth') exists in the application's root directory or the specified path.")
+        st.warning("Please ensure the trained model file ('web_model.pth') exists in the application's root directory or the specified path.")
         return None # Return None if file doesn't exist
     else:
         try:
@@ -483,16 +476,16 @@ def predict_critical_temperature(feature_vector_df: pd.DataFrame, atomic_numbers
         st.error("Invalid input provided to prediction function (features, atomic numbers, or coefficients missing).")
         return None
     if len(atomic_numbers) != len(coefficients):
-         st.error("Mismatch between length of atomic numbers and coefficients.")
-         return None
+          st.error("Mismatch between length of atomic numbers and coefficients.")
+          return None
 
     try:
         # --- 1. Preprocessing ---
         # Ensure the feature vector DataFrame has the correct columns in the correct order
         if not all(feature in feature_vector_df.columns for feature in TOP_FEATURES):
-             missing = set(TOP_FEATURES) - set(feature_vector_df.columns)
-             st.error(f"Input DataFrame is missing required features: {missing}")
-             return None
+              missing = set(TOP_FEATURES) - set(feature_vector_df.columns)
+              st.error(f"Input DataFrame is missing required features: {missing}")
+              return None
         # Select and reorder features, convert to NumPy array
         features_np = feature_vector_df[TOP_FEATURES].values # Shape: (1, num_features)
 
@@ -515,10 +508,10 @@ def predict_critical_temperature(feature_vector_df: pd.DataFrame, atomic_numbers
         # Normalize coefficients
         row_sum = padded_coefficients_np.sum()
         if abs(row_sum) < 1e-8: # Avoid division by zero
-             normalized_coefficients_np = padded_coefficients_np
-             st.warning("Sum of coefficients is near zero. Using unnormalized coefficients for prediction.")
+              normalized_coefficients_np = padded_coefficients_np
+              st.warning("Sum of coefficients is near zero. Using unnormalized coefficients for prediction.")
         else:
-             normalized_coefficients_np = padded_coefficients_np / row_sum
+              normalized_coefficients_np = padded_coefficients_np / row_sum
 
         # Convert to PyTorch tensors and add batch dimension (unsqueeze(0))
         # Ensure tensors are on the CPU
@@ -548,287 +541,122 @@ def predict_critical_temperature(feature_vector_df: pd.DataFrame, atomic_numbers
 
 
 # --- Streamlit App Layout and Logic ---
-st.set_page_config(page_title="Superconductor Tc Predictor", page_icon="✨", layout="centered") # Changed icon
 
-# --- Define CSS for the App (Permanent Dark Theme) ---
-APP_RADIUS = "8px"  # Slightly larger radius for a softer look
-ACCENT_COLOR = "#00CED1" # Vibrant Dark Turquoise
-ACCENT_COLOR_HOVER = "#00B0A8" # Slightly darker for hover
-ACCENT_COLOR_ACTIVE = "#008F86" # Even darker for active
-BG_COLOR = "#1A1A2E" # Dark blue/purple background
-COMPONENT_BG_COLOR = "#162447" # Slightly lighter component background
-TEXT_COLOR = "#E0E0E0" # Light text
-TEXT_COLOR_MUTED = "#A0AEC0" # Muted text (like placeholders)
-BORDER_COLOR = "#4A5568" # Subtle border color
+# Set page configuration (title, icon, layout)
+# Layout="centered" keeps the main content area constrained to a reasonable width.
+# You can experiment with layout="wide".
+st.set_page_config(
+    page_title="Superconductor Tc Predictor",
+    page_icon="✨", # Fun emoji icon
+    layout="centered",
+    initial_sidebar_state="auto" # Allows users to toggle sidebar if needed later
+)
 
-app_css = f"""
-<style>
-    /* --- Base Styles --- */
-    body, .stApp {{
-        background-color: {BG_COLOR} !important;
-        color: {TEXT_COLOR} !important;
-        font-family: 'Inter', sans-serif; /* Optional: Use a specific clean font */
-    }}
-    h1 {{
-        color: {ACCENT_COLOR};
-        text-align: center;
-        font-weight: 700; /* Bolder title */
-        margin-bottom: 1.5rem; /* More space below title */
-    }}
-
-    /* --- Input Field --- */
-    .stTextInput label {{
-        color: {ACCENT_COLOR};
-        font-weight: 600; /* Semi-bold label */
-        margin-bottom: 0.5rem; /* Space between label and input */
-    }}
-    div[data-testid="stTextInput"] input {{
-        border: 1px solid {BORDER_COLOR} !important;
-        border-radius: {APP_RADIUS} !important;
-        background-color: {COMPONENT_BG_COLOR} !important;
-        color: {TEXT_COLOR} !important;
-        padding: 12px 15px !important; /* Slightly more padding */
-        transition: border-color 0.3s ease, box-shadow 0.3s ease; /* Smooth transition */
-    }}
-    /* Input focus style */
-    div[data-testid="stTextInput"] input:focus {{
-        outline: none !important;
-        border-color: {ACCENT_COLOR} !important; /* Highlight border on focus */
-        box-shadow: 0 0 0 3px rgba(0, 206, 209, 0.3) !important; /* Subtle glow effect */
-    }}
-    .stTextInput input::placeholder {{
-        color: {TEXT_COLOR_MUTED} !important;
-        opacity: 1;
-    }}
-
-    /* --- Button --- */
-    .stButton button {{
-        background-color: {ACCENT_COLOR} !important;
-        color: #FFFFFF !important; /* White text on accent button */
-        border: none !important;
-        padding: 12px 24px !important; /* More padding */
-        border-radius: {APP_RADIUS} !important;
-        font-weight: 600 !important; /* Semi-bold text */
-        transition: background-color 0.3s ease, transform 0.1s ease !important;
-        width: 100%; /* Make button full width */
-        margin-top: 1rem; /* Space above button */
-    }}
-    .stButton button:hover {{
-        background-color: {ACCENT_COLOR_HOVER} !important;
-        transform: translateY(-2px); /* Slight lift on hover */
-    }}
-    .stButton button:active {{
-        background-color: {ACCENT_COLOR_ACTIVE} !important;
-        transform: translateY(0px); /* Back to normal on click */
-    }}
-
-    /* --- Result Box --- */
-    .result-box {{
-        background: linear-gradient(135deg, {COMPONENT_BG_COLOR}, {BG_COLOR}); /* Subtle gradient */
-        border: 1px solid {ACCENT_COLOR}; /* Accent border */
-        border-radius: {APP_RADIUS};
-        padding: 25px 30px; /* Generous padding */
-        margin-top: 2rem; /* More space above result */
-        text-align: center;
-        box-shadow: 0 6px 12px rgba(0, 206, 209, 0.15); /* Soft shadow */
-        transition: transform 0.3s ease;
-    }}
-     .result-box:hover {{
-         transform: translateY(-3px); /* Slight lift on hover */
-     }}
-    .result-box strong {{
-        color: {ACCENT_COLOR};
-        font-size: 2.5em; /* Larger result font */
-        font-weight: 700;
-        display: block; /* Ensure it takes full width */
-        margin-top: 0.5rem; /* Space between label and result */
-    }}
-    .result-box span {{
-        color: {TEXT_COLOR};
-        font-size: 1.1em;
-    }}
-
-    /* --- Expander --- */
-    div[data-testid="stExpander"] {{
-        border: 1px solid {BORDER_COLOR} !important;
-        border-radius: {APP_RADIUS} !important;
-        background-color: {COMPONENT_BG_COLOR} !important;
-        overflow: hidden !important;
-        margin-top: 1.5rem; /* Space above expander */
-    }}
-    /* Expander header container */
-    div[data-testid="stExpander"] > div:first-child {{
-         border: none !important;
-         background: none !important;
-    }}
-     /* Expander header text/icon area */
-     div[data-testid="stExpander"] summary {{
-        font-weight: 600 !important;
-        color: {TEXT_COLOR} !important;
-        border-radius: 0 !important;
-        padding: 0.75rem 1.25rem !important; /* Adjust padding */
-        border-bottom: 1px solid {BORDER_COLOR} !important;
-        transition: background-color 0.3s ease;
-     }}
-      div[data-testid="stExpander"] summary:hover {{
-          background-color: rgba(255, 255, 255, 0.05); /* Subtle hover */
-      }}
-    /* Expander content area */
-    div[data-testid="stExpander"] .streamlit-expanderContent div {{
-        color: {TEXT_COLOR} !important;
-        padding: 1.25rem !important; /* Adjust padding */
-        border-top: none !important; /* Ensure no double border */
-    }}
-    /* Style dataframes inside expander */
-     div[data-testid="stExpander"] .stDataFrame {{
-         border: 1px solid {BORDER_COLOR};
-         border-radius: {APP_RADIUS};
-     }}
-
-
-    /* --- Code Blocks --- */
-     code {{
-         background-color: {BG_COLOR} !important; /* Match main background */
-         color: {ACCENT_COLOR} !important; /* Accent color for code */
-         padding: 3px 6px !important;
-         border-radius: {APP_RADIUS} !important;
-         border: 1px solid {BORDER_COLOR}; /* Subtle border */
-         font-size: 0.9em;
-    }}
-
-    /* --- General Text & Links --- */
-    .stMarkdown, .stWrite, div[data-testid="stText"], div[data-testid="stForm"], .stCaption {{
-        color: {TEXT_COLOR} !important;
-    }}
-     .stCaption {{
-         color: {TEXT_COLOR_MUTED} !important; /* Muted color for caption */
-         text-align: center;
-         margin-top: 2rem;
-     }}
-    a {{
-        color: {ACCENT_COLOR} !important;
-        text-decoration: none !important; /* Remove underline */
-        transition: color 0.3s ease;
-    }}
-    a:hover {{
-        color: {ACCENT_COLOR_HOVER} !important;
-        text-decoration: underline !important; /* Add underline on hover */
-    }}
-
-    /* --- Force Hide Toggle (Just in Case) --- */
-    div[data-testid="stToggle"] {{
-        display: none !important;
-        visibility: hidden !important;
-        height: 0 !important;
-        width: 0 !important;
-        overflow: hidden !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        border: none !important;
-        position: absolute !important; /* Take out of layout flow */
-        left: -9999px; /* Move off-screen */
-    }}
-
-    /* --- Progress Bar Styling --- */
-    div[data-testid="stProgressBar"] > div > div > div > div {{
-        background-image: linear-gradient(to right, {ACCENT_COLOR_ACTIVE} , {ACCENT_COLOR}) !important; /* Gradient progress bar */
-    }}
-
-</style>
-"""
-
-# --- Apply Theme ---
-st.markdown(app_css, unsafe_allow_html=True)
-
+# --- Removed Custom CSS Block ---
+# The app will now use Streamlit's default styling, respecting the user's
+# light/dark theme preference set in the Streamlit settings menu.
 
 # --- App Title ---
-st.title("Superconductor Tc Predictor")
-# The st.toggle call has been removed from the code below
+# Use st.title for the main heading. Styling is handled by Streamlit's theme.
+st.title("⚛️ Superconductor Tc Predictor") # Added an atom emoji
 
-st.markdown("---") # Divider
+st.markdown("---") # Visual divider
 
 # --- Input Section ---
-# Use a form to group input and button
+# Use st.form to group the input field and the submit button.
+# This prevents the app from rerunning on every keystroke in the text input.
 with st.form("prediction_form"):
     formula_input = st.text_input(
-        "Enter Chemical Formula:",
-        placeholder="e.g., MgB2, YBa2Cu3O7",
-        help="Enter the chemical formula (e.g., H2O, Fe2O3). Press Enter to submit." # Updated help text
+        label="Enter Chemical Formula:", # Clear label
+        placeholder="e.g., MgB2, YBa2Cu3O7, La(Fe0.9Si0.1)13", # Example placeholder
+        help="Type the chemical formula and press Enter or click the button below." # Helpful tooltip
     )
-    submitted = st.form_submit_button("✨ Predict Tc ✨") # Changed button text
+    # Use st.form_submit_button.
+    # use_container_width=True makes the button span the width of the container.
+    submitted = st.form_submit_button("✨ Predict Tc ✨", use_container_width=True)
 
 # --- Processing and Output ---
-if submitted and formula_input: # Process only when form is submitted
-    # Initialize progress bar
+if submitted and formula_input: # Process only when form is submitted and input is not empty
+    # Initialize progress bar for visual feedback during processing
     progress_text = "Starting prediction process..."
     progress_bar = st.progress(0, text=progress_text)
 
+    # 1. Parse the formula
     parsed = parse_formula(formula_input)
+    # Update progress (approximate)
+    progress_bar.progress(10, text=f"Parsing formula: {formula_input}...")
 
     if parsed:
-        # Update progress after parsing
+        # Update progress after successful parsing
         progress_bar.progress(33, text="Parsed formula. Generating features...")
+        time.sleep(0.1) # Small delay for visual flow
 
+        # 2. Generate features
         features, atom_nums, coeffs = generate_features(parsed)
 
         if isinstance(features, pd.DataFrame) and not features.empty:
             # Update progress after feature generation
             progress_bar.progress(66, text="Generated features. Predicting Tc...")
+            time.sleep(0.1) # Small delay
 
+            # 3. Predict Tc
             predicted_tc = predict_critical_temperature(features, atom_nums, coeffs)
 
             # Update progress after prediction
             progress_bar.progress(100, text="Prediction Complete!")
+            time.sleep(0.5) # Keep complete message visible briefly
+            progress_bar.empty() # Remove progress bar after completion
 
-            # Display results *after* progress bar completes
-            with st.expander("View Input Details & Features"): # Changed expander title
-                st.write("**Input Interpretation:**")
-                st.json(parsed) # Use st.json for better dict display
-                st.write("**Atomic Numbers:**")
-                st.write(f"`{atom_nums}`")
-                st.write("**Coefficients:**")
-                st.write(f"`{coeffs}`")
-                st.write("**Calculated Feature Vector**")
+            # --- Display Results ---
+
+            st.markdown("---") # Divider before results
+
+            if predicted_tc is not None:
+                # Use st.metric for a visually distinct and modern display of the result.
+                st.metric(
+                    label=f"Predicted Tc for {formula_input}",
+                    value=f"{predicted_tc:.2f} K"
+                    # delta="Optional: Add change info here", # Example: Can show change from previous prediction
+                    # delta_color="normal" # "normal", "inverse", "off"
+                )
+                st.balloons() # Add a fun element on successful prediction!
+
+            else:
+                st.error("Prediction failed after feature generation. Check logs for details.")
+                # Optionally keep the progress bar visible on error
+                # progress_bar.progress(100, text="Prediction Failed!")
+
+            # Use st.expander to hide detailed information by default.
+            with st.expander("View Input Details & Features"):
+                st.write("**Input Interpretation (Elements: Count):**")
+                # st.json displays dictionaries nicely.
+                st.json(parsed)
+                # Use st.code for displaying lists or code-like snippets clearly.
+                st.write("**Atomic Numbers (Input Order):**")
+                st.code(f"{atom_nums}", language=None) # None language for plain text
+                st.write("**Coefficients (Input Order):**")
+                st.code(f"{[float(f'{c:.4f}') for c in coeffs]}", language=None) # Format for readability
+                st.write("**Calculated Feature Vector (Used by Model):**")
+                # st.dataframe displays pandas DataFrames.
                 st.dataframe(features)
 
-            st.markdown("---") # Divider before result
-            if predicted_tc is not None:
-                # Display result using the custom styled div
-                st.markdown(
-                    f"""
-                    <div class="result-box">
-                        <span>Predicted Critical Temperature (Tc) for <strong>{formula_input}</strong>is</span>
-                        <strong>{predicted_tc:.2f} K</strong>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-            else:
-                st.error("Prediction failed after feature generation.")
-                # Optionally hide progress bar on error
-                # progress_bar.empty()
         elif features is None:
-             st.error("Feature generation failed. Cannot proceed.")
-             # Optionally hide progress bar on error
-             # progress_bar.empty()
-        else:
-             st.warning("Feature generation resulted in empty data. Cannot predict Tc.")
-             # Optionally hide progress bar on warning
-             # progress_bar.empty()
-
-        # Optional: Add a small delay before the progress bar disappears automatically
-        # time.sleep(1.5)
-        # progress_bar.empty() # Remove progress bar after completion/display
+            st.error("Feature generation failed. Cannot proceed. Check formula and elemental data.")
+            progress_bar.empty() # Hide progress bar on failure
+        else: # features is an empty DataFrame
+            st.warning("Feature generation resulted in empty data. Cannot predict Tc.")
+            progress_bar.empty() # Hide progress bar
 
     else: # Parsing failed - error message already shown by parse_formula
-        # Optionally hide progress bar on parsing error
-        progress_bar.empty()
-
+        st.error("Formula parsing failed. Please check the input format.")
+        progress_bar.empty() # Hide progress bar
 
 elif submitted and not formula_input:
-     st.warning("Please enter a chemical formula before predicting.")
+      # Handle case where button is clicked with empty input
+      st.warning("Please enter a chemical formula before predicting.")
 
 
 # --- Footer ---
 st.markdown("---")
-st.caption("✨ Built with Streamlit ✨") # Updated caption
+# Use st.caption for less prominent text, like a footer.
+st.caption("✨ Built with Streamlit | Model based on material properties ✨")
