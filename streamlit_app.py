@@ -36,7 +36,7 @@ HIDDEN_SIZE_FEATURES = 64
 HIDDEN_SIZE_1 = 96
 HIDDEN_SIZE_2 = 64
 P_DROP = 0.2
-MODEL_PATH = 'model_web.pth' # Relative path to the saved model
+MODEL_PATH = 'web_model.pth' # Relative path to the saved model
 ELEMENTAL_DATA_PATH = 'elemental_properties_cleaned.csv' # Path to elemental data
 
 # --- Element Cache for Validation ---
