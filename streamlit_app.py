@@ -659,4 +659,4 @@ elif submitted and not formula_input:
 # --- Footer ---
 st.markdown("---")
 # Use st.caption for less prominent text, like a footer.
-st.caption("✨ Built with Streamlit | Model based on material properties ✨")
+st.caption("✨ Built with Streamlit | Model based only on stoichiometric composition ✨")
