@@ -784,11 +784,11 @@ if submitted and formula_input: # Process only when form is submitted
             with st.expander("View Input Details & Features"): # Changed expander title
                 st.write("**Input Interpretation:**")
                 st.json(parsed) # Use st.json for better dict display
-                st.write("**Atomic Numbers Used:**")
+                st.write("**Atomic Numbers:**")
                 st.write(f"`{atom_nums}`")
-                st.write("**Coefficients Used:**")
+                st.write("**Coefficients:**")
                 st.write(f"`{coeffs}`")
-                st.write("**Example Feature Vector (Dummy Data):**")
+                st.write("**Calculated Feature Vector**")
                 st.dataframe(features)
 
             st.markdown("---") # Divider before result
@@ -797,7 +797,7 @@ if submitted and formula_input: # Process only when form is submitted
                 st.markdown(
                     f"""
                     <div class="result-box">
-                        <span>Predicted Critical Temperature (Tc) for <strong>{formula_input}</strong>:</span>
+                        <span>Predicted Critical Temperature (Tc) for <strong>{formula_input}</strong>is</span>
                         <strong>{predicted_tc:.2f} K</strong>
                     </div>
                     """,
@@ -831,4 +831,4 @@ elif submitted and not formula_input:
 
 # --- Footer ---
 st.markdown("---")
-st.caption("✨ Built with Streamlit | Placeholder Model ✨") # Updated caption
+st.caption("✨ Built with Streamlit ✨") # Updated caption
