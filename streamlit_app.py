@@ -12,13 +12,13 @@ from collections import defaultdict # Added for parsing
 MAX_ATOMIC_LEN = 10 # Max sequence length used for padding during training
 NUM_ELEMENTS = 93   # Max atomic number + 1, used for embedding layer size
 TOP_FEATURES = [    # The exact list and order of features used for training
-    'MagneticOrdering_weighted_std',
-    'MagneticOrdering_weighted_mean',
+    'MagneticType1_weighted_std',
+    'MagneticType1_weighted_mean',
     'Valence_weighted_std',
     'SpecificFusionHeat_weighted_std',
     'AtomicMass_weighted_std',
     'AtomicNumber_weighted_std',
-    'MagneticType_weighted_mean', # Note: Ensure this exists in your elemental data
+    'MagneticType2_weighted_mean', # Note: Ensure this exists in your elemental data
     'SpecificFusionHeat_weighted_mean',
     'Block_weighted_std',
     'Block_weighted_mean'
